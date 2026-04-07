@@ -32,7 +32,7 @@ function App() {
     return (
       <div style={{
         display: 'flex', alignItems: 'center', justifyContent: 'center',
-        height: '100vh', background: '#1a1714', color: '#c9a84c',
+        height: '100vh', background: '#000000', color: '#f0c040',
         fontFamily: 'Georgia, serif', fontSize: '.85rem',
       }}>
         Loading...

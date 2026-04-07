@@ -52,7 +52,7 @@ const WEEKLY_PROMPTS = [
 ];
 
 const FIELD_META = {
-  visualize: { label: "Visualize", color: "#c9a84c", icon: "☀" },
+  visualize: { label: "Visualize", color: "#f0c040", icon: "☀" },
   gratitude: { label: "Money Gratitude", color: "#7a4cc9", icon: "✦" },
   lofty_a: { label: "Lofty Answer", color: "#a8c94c", icon: "→" },
   value: { label: "Value Created", color: "#c97a4c", icon: "◆" },
@@ -66,7 +66,7 @@ const weekIndex = () => Math.floor(dayIndex() / 7);
 const fmtDate = (ds) => new Date(ds + 'T12:00:00').toLocaleDateString('en', { weekday: 'short', month: 'short', day: 'numeric' });
 
 const SCORE_LABELS = ["", "Anxious", "Stressed", "Uneasy", "Uncertain", "Neutral", "Okay", "Hopeful", "Confident", "Abundant", "Unstoppable"];
-const SCORE_COLORS = ["", "#c94c4c", "#c96a4c", "#c9884c", "#c9a44c", "#a8a868", "#7ab86e", "#5cb87a", "#4cb89a", "#4caac9", "#c9a84c"];
+const SCORE_COLORS = ["", "#c94c4c", "#c96a4c", "#c9884c", "#c9a44c", "#a8a868", "#7ab86e", "#5cb87a", "#4cb89a", "#4caac9", "#f0c040"];
 
 export default function Journal({ onLogout }) {
   const [entries, setEntries] = useState({});
@@ -185,7 +185,7 @@ export default function Journal({ onLogout }) {
   const todayShift = entries[today]?.ms_am && entries[today]?.ms_pm ? entries[today].ms_pm - entries[today].ms_am : null;
 
   const prompts = tod === "morning" ? [
-    { id: "visualize", label: "Visualize", q: "Close your eyes for 60 seconds. See one specific scene from the life you're building. Describe it.", color: "#c9a84c" },
+    { id: "visualize", label: "Visualize", q: "Close your eyes for 60 seconds. See one specific scene from the life you're building. Describe it.", color: "#f0c040" },
     { id: "gratitude", label: "Money Gratitude", q: "3 financial things you're grateful for right now, no matter how small.", color: "#7a4cc9" },
     { id: "lofty_q", label: "Today's Lofty Question", q: todayLofty, color: "#a8c94c", hint: "Sit with this question. Let your brain search for answers all day.", isQuestion: true },
   ] : [
@@ -200,24 +200,24 @@ export default function Journal({ onLogout }) {
     const journalFields = Object.keys(e).filter(f => !['ms_am','ms_pm','msn_am','msn_pm'].includes(f) && e[f]?.trim?.());
     const isToday = dk === today;
     return (
-      <div style={{ marginBottom: 16, background: 'rgba(245,240,232,.03)', border: `1px solid ${isToday ? 'rgba(201,168,76,.2)' : 'rgba(201,168,76,.06)'}`, borderRadius: 12, padding: '14px 16px', animation: 'fadeUp .3s both' }}>
+      <div style={{ marginBottom: 16, background: 'rgba(240,240,240,.05)', border: `1px solid ${isToday ? 'rgba(240,192,64,.2)' : 'rgba(240,192,64,.06)'}`, borderRadius: 12, padding: '14px 16px', animation: 'fadeUp .3s both' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
-          <span style={{ fontSize: '.75rem', color: '#c9a84c', fontWeight: 700 }}>{fmtDate(dk)}</span>
-          {isToday && <span style={{ fontSize: '.5rem', background: 'rgba(201,168,76,.12)', color: '#c9a84c', padding: '2px 8px', borderRadius: 10 }}>TODAY</span>}
+          <span style={{ fontSize: '.75rem', color: '#f0c040', fontWeight: 700 }}>{fmtDate(dk)}</span>
+          {isToday && <span style={{ fontSize: '.5rem', background: 'rgba(240,192,64,.12)', color: '#f0c040', padding: '2px 8px', borderRadius: 10 }}>TODAY</span>}
           {(e.ms_am || e.ms_pm) && (
             <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
-              {e.ms_am > 0 && <div style={{ width: 22, height: 22, borderRadius: 4, background: SCORE_COLORS[e.ms_am], display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '.6rem', fontWeight: 700, color: '#1a1714' }}>{e.ms_am}</div>}
+              {e.ms_am > 0 && <div style={{ width: 22, height: 22, borderRadius: 4, background: SCORE_COLORS[e.ms_am], display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '.6rem', fontWeight: 700, color: '#000000' }}>{e.ms_am}</div>}
               {e.ms_am > 0 && e.ms_pm > 0 && <span style={{ fontSize: '.5rem', color: e.ms_pm >= e.ms_am ? '#4cc97a' : '#c96a4c' }}>→</span>}
-              {e.ms_pm > 0 && <div style={{ width: 22, height: 22, borderRadius: 4, background: SCORE_COLORS[e.ms_pm], display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '.6rem', fontWeight: 700, color: '#1a1714' }}>{e.ms_pm}</div>}
+              {e.ms_pm > 0 && <div style={{ width: 22, height: 22, borderRadius: 4, background: SCORE_COLORS[e.ms_pm], display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '.6rem', fontWeight: 700, color: '#000000' }}>{e.ms_pm}</div>}
             </div>
           )}
         </div>
-        <div style={{ fontSize: '.7rem', color: '#a8c94c', opacity: .4, fontStyle: 'italic', marginBottom: 8, borderLeft: '2px solid rgba(168,201,76,.15)', paddingLeft: 10 }}>{loftyQ}</div>
+        <div style={{ fontSize: '.7rem', color: '#a8c94c', opacity: .75, fontStyle: 'italic', marginBottom: 8, borderLeft: '2px solid rgba(168,201,76,.3)', paddingLeft: 10 }}>{loftyQ}</div>
         {journalFields.map(f => {
-          const meta = FIELD_META[f] || { label: f, color: '#c9a84c', icon: '·' };
-          return (<div key={f} style={{ marginBottom: 8 }}><div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 2 }}><span style={{ fontSize: '.55rem', color: meta.color, opacity: .6 }}>{meta.icon}</span><span style={{ fontSize: '.58rem', letterSpacing: '.1em', textTransform: 'uppercase', color: meta.color, opacity: .6 }}>{meta.label}</span></div><p style={{ fontSize: '.78rem', color: '#f5f0e8', opacity: .65, lineHeight: 1.5, margin: 0, paddingLeft: 16 }}>{e[f]}</p></div>);
+          const meta = FIELD_META[f] || { label: f, color: '#f0c040', icon: '·' };
+          return (<div key={f} style={{ marginBottom: 8 }}><div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 2 }}><span style={{ fontSize: '.55rem', color: meta.color, opacity: .6 }}>{meta.icon}</span><span style={{ fontSize: '.58rem', letterSpacing: '.1em', textTransform: 'uppercase', color: meta.color, opacity: .6 }}>{meta.label}</span></div><p style={{ fontSize: '.78rem', color: '#f0f0f0', opacity: .95, lineHeight: 1.5, margin: 0, paddingLeft: 16 }}>{e[f]}</p></div>);
         })}
-        {(e.msn_am || e.msn_pm) && (<div style={{ marginTop: 6, borderTop: '1px solid rgba(201,168,76,.06)', paddingTop: 6 }}>{e.msn_am && <p style={{ fontSize: '.68rem', color: 'rgba(245,240,232,.4)', lineHeight: 1.3, margin: '0 0 2px' }}>☀ {e.msn_am}</p>}{e.msn_pm && <p style={{ fontSize: '.68rem', color: 'rgba(245,240,232,.4)', lineHeight: 1.3, margin: 0 }}>☽ {e.msn_pm}</p>}</div>)}
+        {(e.msn_am || e.msn_pm) && (<div style={{ marginTop: 6, borderTop: '1px solid rgba(240,192,64,.06)', paddingTop: 6 }}>{e.msn_am && <p style={{ fontSize: '.68rem', color: 'rgba(240,240,240,.75)', lineHeight: 1.3, margin: '0 0 2px' }}>☀ {e.msn_am}</p>}{e.msn_pm && <p style={{ fontSize: '.68rem', color: 'rgba(240,240,240,.75)', lineHeight: 1.3, margin: 0 }}>☽ {e.msn_pm}</p>}</div>)}
       </div>
     );
   };
@@ -230,55 +230,55 @@ export default function Journal({ onLogout }) {
     const area = path + ` L${pts.at(-1).x},${height} L${pts[0].x},${height} Z`;
     return (
       <svg width={width} height={height} viewBox={`0 0 ${width} ${height}`} style={{ width: '100%', height: 'auto' }}>
-        <defs><linearGradient id="sg" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#c9a84c" stopOpacity=".2" /><stop offset="100%" stopColor="#c9a84c" stopOpacity="0" /></linearGradient></defs>
-        <path d={area} fill="url(#sg)" /><path d={path} fill="none" stroke="#c9a84c" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-        {pts.map((p, i) => <circle key={i} cx={p.x} cy={p.y} r="3" fill={SCORE_COLORS[data[i].score]} stroke="#1a1714" strokeWidth="1.5" />)}
+        <defs><linearGradient id="sg" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#f0c040" stopOpacity=".2" /><stop offset="100%" stopColor="#f0c040" stopOpacity="0" /></linearGradient></defs>
+        <path d={area} fill="url(#sg)" /><path d={path} fill="none" stroke="#f0c040" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+        {pts.map((p, i) => <circle key={i} cx={p.x} cy={p.y} r="3" fill={SCORE_COLORS[data[i].score]} stroke="#000000" strokeWidth="1.5" />)}
       </svg>
     );
   };
 
-  if (loading) return <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh', color: '#c9a84c' }}>Loading your journal...</div>;
+  if (loading) return <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh', color: '#f0c040' }}>Loading your journal...</div>;
 
   return (
     <div style={{ minHeight: '100vh' }}>
       <div style={{ padding: '20px 20px 0', maxWidth: 520, margin: '0 auto' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
           <div>
-            <h1 style={{ fontSize: '1.05rem', color: '#c9a84c', letterSpacing: '.15em', fontWeight: 400, margin: 0, textTransform: 'uppercase' }}>Wealth Journal</h1>
-            <p style={{ fontSize: '.6rem', color: '#e8d59a', opacity: .35, margin: '2px 0', letterSpacing: '.1em' }}>Day {Math.max(1, Object.keys(entries).length)} of 90</p>
+            <h1 style={{ fontSize: '1.05rem', color: '#f0c040', letterSpacing: '.15em', fontWeight: 400, margin: 0, textTransform: 'uppercase' }}>Wealth Journal</h1>
+            <p style={{ fontSize: '.6rem', color: '#f5e070', opacity: .7, margin: '2px 0', letterSpacing: '.1em' }}>Day {Math.max(1, Object.keys(entries).length)} of 90</p>
           </div>
           <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
             <div style={{ textAlign: 'right', marginRight: 6 }}>
-              <div style={{ fontSize: '1.3rem', color: '#c9a84c', fontWeight: 700, lineHeight: 1 }}>{streak.current}</div>
-              <div style={{ fontSize: '.5rem', color: '#e8d59a', opacity: .35, letterSpacing: '.08em', textTransform: 'uppercase' }}>streak</div>
+              <div style={{ fontSize: '1.3rem', color: '#f0c040', fontWeight: 700, lineHeight: 1 }}>{streak.current}</div>
+              <div style={{ fontSize: '.5rem', color: '#f5e070', opacity: .7, letterSpacing: '.08em', textTransform: 'uppercase' }}>streak</div>
             </div>
-            <button onClick={onLogout} style={{ background: 'none', border: '1px solid rgba(201,168,76,.1)', color: 'rgba(201,168,76,.3)', padding: '4px 10px', borderRadius: 6, fontSize: '.55rem', cursor: 'pointer', fontFamily: 'Georgia, serif' }}>Sign out</button>
+            <button onClick={onLogout} style={{ background: 'none', border: '1px solid rgba(240,192,64,.3)', color: 'rgba(240,192,64,.6)', padding: '4px 10px', borderRadius: 6, fontSize: '.55rem', cursor: 'pointer', fontFamily: 'Georgia, serif' }}>Sign out</button>
           </div>
         </div>
 
-        <div style={{ display: 'flex', marginTop: 14, background: 'rgba(201,168,76,.04)', borderRadius: 10, padding: 3 }}>
+        <div style={{ display: 'flex', marginTop: 14, background: 'rgba(240,192,64,.04)', borderRadius: 10, padding: 3 }}>
           {[{ id: 'journal', label: '✎ Today' }, { id: 'entries', label: '☰ Entries' }, { id: 'trends', label: '◫ Trends' }].map(t => (
             <button key={t.id} onClick={() => setView(t.id)} style={{
               flex: 1, padding: '7px 0', border: 'none', borderRadius: 8, fontSize: '.65rem', letterSpacing: '.08em', textTransform: 'uppercase', cursor: 'pointer',
-              background: view === t.id ? 'rgba(201,168,76,.12)' : 'transparent', color: view === t.id ? '#c9a84c' : 'rgba(245,240,232,.25)',
+              background: view === t.id ? 'rgba(240,192,64,.12)' : 'transparent', color: view === t.id ? '#f0c040' : 'rgba(240,240,240,.55)',
               fontFamily: 'Georgia, serif', fontWeight: view === t.id ? 700 : 400, transition: 'all .3s',
             }}>{t.label}</button>
           ))}
         </div>
 
         {view === 'journal' && (
-          <div style={{ display: 'flex', marginTop: 8, background: 'rgba(201,168,76,.03)', borderRadius: 8, padding: 2 }}>
+          <div style={{ display: 'flex', marginTop: 8, background: 'rgba(240,192,64,.03)', borderRadius: 8, padding: 2 }}>
             {['morning', 'evening'].map(t => (
               <button key={t} onClick={() => setTod(t)} style={{
                 flex: 1, padding: '6px 0', border: 'none', borderRadius: 6, fontSize: '.65rem', letterSpacing: '.1em', textTransform: 'uppercase', cursor: 'pointer',
-                background: tod === t ? 'rgba(201,168,76,.1)' : 'transparent', color: tod === t ? '#c9a84c' : 'rgba(245,240,232,.2)',
+                background: tod === t ? 'rgba(240,192,64,.1)' : 'transparent', color: tod === t ? '#f0c040' : 'rgba(240,240,240,.45)',
                 fontFamily: 'Georgia, serif', transition: 'all .3s',
               }}>{t === 'morning' ? '☀ Morning' : '☽ Evening'}</button>
             ))}
           </div>
         )}
 
-        {saving && <div style={{ textAlign: 'center', padding: '4px 0', fontSize: '.55rem', color: 'rgba(201,168,76,.3)' }}>saving...</div>}
+        {saving && <div style={{ textAlign: 'center', padding: '4px 0', fontSize: '.55rem', color: 'rgba(240,192,64,.3)' }}>saving...</div>}
       </div>
 
       <div style={{ maxWidth: 520, margin: '0 auto', padding: '14px 20px 40px' }}>
@@ -288,7 +288,7 @@ export default function Journal({ onLogout }) {
               const existing = entries[today]?.[p.id] || '';
               const draft = drafts[p.id] ?? existing;
               return (
-                <div key={p.id} style={{ marginBottom: 14, background: p.isQuestion ? 'linear-gradient(135deg, rgba(168,201,76,.05), rgba(168,201,76,.01))' : 'rgba(245,240,232,.03)', border: `1px solid ${p.isQuestion ? 'rgba(168,201,76,.15)' : 'rgba(201,168,76,.08)'}`, borderRadius: 12, padding: '16px 16px 12px', animation: `fadeUp .4s ${i * .08}s both` }}>
+                <div key={p.id} style={{ marginBottom: 14, background: p.isQuestion ? 'linear-gradient(135deg, rgba(168,201,76,.05), rgba(168,201,76,.01))' : 'rgba(240,240,240,.05)', border: `1px solid ${p.isQuestion ? 'rgba(168,201,76,.15)' : 'rgba(240,192,64,.08)'}`, borderRadius: 12, padding: '16px 16px 12px', animation: `fadeUp .4s ${i * .08}s both` }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
                     <div style={{ width: 7, height: 7, borderRadius: '50%', background: p.color, opacity: existing ? 1 : .3 }} />
                     <span style={{ fontSize: '.65rem', letterSpacing: '.12em', textTransform: 'uppercase', color: p.color, opacity: .8 }}>{p.label}</span>
@@ -298,43 +298,43 @@ export default function Journal({ onLogout }) {
                   {p.isQuestion ? (
                     <p style={{ fontSize: '1rem', color: '#a8c94c', lineHeight: 1.5, marginBottom: 8, fontStyle: 'italic', fontWeight: 700 }}>{p.q}</p>
                   ) : (
-                    <p style={{ fontSize: '.82rem', color: '#f5f0e8', opacity: .6, lineHeight: 1.5, marginBottom: 8, fontStyle: 'italic', whiteSpace: 'pre-line' }}>{p.q}</p>
+                    <p style={{ fontSize: '.82rem', color: '#f0f0f0', opacity: .9, lineHeight: 1.5, marginBottom: 8, fontStyle: 'italic', whiteSpace: 'pre-line' }}>{p.q}</p>
                   )}
-                  {p.hint && <p style={{ fontSize: '.6rem', color: p.color, opacity: .35, marginBottom: 6 }}>{p.hint}</p>}
+                  {p.hint && <p style={{ fontSize: '.6rem', color: p.color, opacity: .65, marginBottom: 6 }}>{p.hint}</p>}
                   {!p.isQuestion && (
                     <>
                       <textarea value={draft} onChange={e => setDrafts(d => ({ ...d, [p.id]: e.target.value }))} placeholder="Write here..." rows={p.id === 'gratitude' || p.id === 'weekly' ? 3 : 2}
-                        style={{ width: '100%', background: 'rgba(0,0,0,.3)', border: '1px solid rgba(201,168,76,.06)', borderRadius: 8, padding: '10px 12px', color: '#f5f0e8', fontSize: '.8rem', fontFamily: 'Georgia, serif', resize: 'vertical', lineHeight: 1.6, outline: 'none' }}
-                        onFocus={e => e.target.style.borderColor = 'rgba(201,168,76,.2)'} onBlur={e => e.target.style.borderColor = 'rgba(201,168,76,.06)'} />
-                      {draft && draft !== existing && <button onClick={() => saveField(p.id, draft)} style={{ marginTop: 6, background: 'rgba(201,168,76,.1)', border: '1px solid rgba(201,168,76,.2)', color: '#c9a84c', padding: '5px 14px', borderRadius: 8, fontSize: '.65rem', cursor: 'pointer', fontFamily: 'Georgia, serif' }}>Save</button>}
+                        style={{ width: '100%', background: 'rgba(0,0,0,.3)', border: '1px solid rgba(240,192,64,.06)', borderRadius: 8, padding: '10px 12px', color: '#f0f0f0', fontSize: '.8rem', fontFamily: 'Georgia, serif', resize: 'vertical', lineHeight: 1.6, outline: 'none' }}
+                        onFocus={e => e.target.style.borderColor = 'rgba(240,192,64,.2)'} onBlur={e => e.target.style.borderColor = 'rgba(240,192,64,.06)'} />
+                      {draft && draft !== existing && <button onClick={() => saveField(p.id, draft)} style={{ marginTop: 6, background: 'rgba(240,192,64,.1)', border: '1px solid rgba(240,192,64,.2)', color: '#f0c040', padding: '5px 14px', borderRadius: 8, fontSize: '.65rem', cursor: 'pointer', fontFamily: 'Georgia, serif' }}>Save</button>}
                     </>
                   )}
                 </div>
               );
             })}
 
-            <div style={{ marginBottom: 14, background: 'linear-gradient(135deg, rgba(201,168,76,.06), rgba(201,168,76,.02))', border: '1px solid rgba(201,168,76,.15)', borderRadius: 12, padding: '18px 16px', animation: `fadeUp .4s ${prompts.length * .08}s both` }}>
+            <div style={{ marginBottom: 14, background: 'linear-gradient(135deg, rgba(240,192,64,.06), rgba(240,192,64,.02))', border: '1px solid rgba(240,192,64,.15)', borderRadius: 12, padding: '18px 16px', animation: `fadeUp .4s ${prompts.length * .08}s both` }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
-                <span style={{ fontSize: '.65rem', letterSpacing: '.12em', textTransform: 'uppercase', color: '#c9a84c' }}>{tod === 'morning' ? '☀' : '☽'} Mindset Check-In</span>
+                <span style={{ fontSize: '.65rem', letterSpacing: '.12em', textTransform: 'uppercase', color: '#f0c040' }}>{tod === 'morning' ? '☀' : '☽'} Mindset Check-In</span>
                 {msSaved && <span style={{ fontSize: '.6rem', color: '#4cc97a', marginLeft: 'auto' }}>✓</span>}
               </div>
-              <p style={{ fontSize: '.82rem', color: '#f5f0e8', opacity: .55, fontStyle: 'italic', marginBottom: 14 }}>
+              <p style={{ fontSize: '.82rem', color: '#f0f0f0', opacity: .85, fontStyle: 'italic', marginBottom: 14 }}>
                 {tod === 'morning' ? 'How do you feel about money this morning?' : 'How do you feel about money right now, end of day?'}
               </p>
               <div style={{ display: 'flex', gap: 4, marginBottom: 6, justifyContent: 'center' }}>
                 {[1,2,3,4,5,6,7,8,9,10].map(n => (
                   <button key={n} onClick={() => setMs(n)} style={{
                     width: 28, height: 28, borderRadius: 6, border: 'none', cursor: 'pointer', fontSize: '.7rem', fontWeight: 700,
-                    background: ms === n ? SCORE_COLORS[n] : 'rgba(245,240,232,.05)', color: ms === n ? '#1a1714' : 'rgba(245,240,232,.25)',
+                    background: ms === n ? SCORE_COLORS[n] : 'rgba(240,240,240,.07)', color: ms === n ? '#000000' : 'rgba(240,240,240,.55)',
                     transform: ms === n ? 'scale(1.15)' : 'scale(1)', transition: 'all .2s',
                   }}>{n}</button>
                 ))}
               </div>
               {ms > 0 && <p style={{ textAlign: 'center', fontSize: '.7rem', color: SCORE_COLORS[ms], marginBottom: 10, fontStyle: 'italic' }}>{SCORE_LABELS[ms]}</p>}
               <textarea value={msNote} onChange={e => setMsNote(e.target.value)} placeholder="Why this score? One sentence..." rows={1}
-                style={{ width: '100%', background: 'rgba(0,0,0,.3)', border: '1px solid rgba(201,168,76,.06)', borderRadius: 8, padding: '8px 12px', color: '#f5f0e8', fontSize: '.75rem', fontFamily: 'Georgia, serif', resize: 'none', lineHeight: 1.5, outline: 'none' }} />
+                style={{ width: '100%', background: 'rgba(0,0,0,.3)', border: '1px solid rgba(240,192,64,.06)', borderRadius: 8, padding: '8px 12px', color: '#f0f0f0', fontSize: '.75rem', fontFamily: 'Georgia, serif', resize: 'none', lineHeight: 1.5, outline: 'none' }} />
               {ms > 0 && (ms !== existingScore || msNote !== (entries[today]?.[noteKey] || "")) && (
-                <button onClick={saveMindset} style={{ marginTop: 6, background: 'rgba(201,168,76,.12)', border: '1px solid rgba(201,168,76,.25)', color: '#c9a84c', padding: '5px 14px', borderRadius: 8, fontSize: '.65rem', cursor: 'pointer', fontFamily: 'Georgia, serif' }}>Save</button>
+                <button onClick={saveMindset} style={{ marginTop: 6, background: 'rgba(240,192,64,.12)', border: '1px solid rgba(240,192,64,.25)', color: '#f0c040', padding: '5px 14px', borderRadius: 8, fontSize: '.65rem', cursor: 'pointer', fontFamily: 'Georgia, serif' }}>Save</button>
               )}
               {tod === 'evening' && todayShift !== null && (
                 <div style={{ marginTop: 10, textAlign: 'center', fontSize: '.65rem', color: todayShift >= 0 ? '#4cc97a' : '#c96a4c', opacity: .7 }}>
@@ -348,40 +348,40 @@ export default function Journal({ onLogout }) {
         {view === 'entries' && (
           <>
             <div style={{ marginBottom: 16 }}>
-              <h3 style={{ fontSize: '.65rem', color: '#c9a84c', letterSpacing: '.15em', textTransform: 'uppercase', marginBottom: 10, opacity: .5 }}>{entryDates.length} {entryDates.length === 1 ? 'day' : 'days'} logged</h3>
+              <h3 style={{ fontSize: '.65rem', color: '#f0c040', letterSpacing: '.15em', textTransform: 'uppercase', marginBottom: 10, opacity: .85 }}>{entryDates.length} {entryDates.length === 1 ? 'day' : 'days'} logged</h3>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(10, 1fr)', gap: 4, marginBottom: 16 }}>
                 {getLast30().map((d, i) => (
                   <div key={i} onClick={() => d.hasData && setSelectedDate(selectedDate === d.date ? null : d.date)} style={{
                     aspectRatio: '1', borderRadius: 4, cursor: d.hasData ? 'pointer' : 'default',
-                    background: selectedDate === d.date ? 'rgba(201,168,76,.5)' : d.score ? `rgba(${d.score >= 7 ? '76,200,122' : d.score >= 4 ? '201,168,76' : '201,76,76'},${.12 + (d.score / 10) * .45})` : d.hasData ? 'rgba(201,168,76,.1)' : 'rgba(245,240,232,.03)',
+                    background: selectedDate === d.date ? 'rgba(240,192,64,.5)' : d.score ? `rgba(${d.score >= 7 ? '76,200,122' : d.score >= 4 ? '201,168,76' : '201,76,76'},${.12 + (d.score / 10) * .45})` : d.hasData ? 'rgba(240,192,64,.1)' : 'rgba(240,240,240,.05)',
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    fontSize: '.5rem', color: selectedDate === d.date ? '#1a1714' : d.score || d.hasData ? '#f5f0e8' : 'rgba(245,240,232,.12)',
-                    fontWeight: selectedDate === d.date ? 700 : 400, border: d.date === today ? '1px solid rgba(201,168,76,.4)' : '1px solid transparent',
+                    fontSize: '.5rem', color: selectedDate === d.date ? '#000000' : d.score || d.hasData ? '#f0f0f0' : 'rgba(240,240,240,.2)',
+                    fontWeight: selectedDate === d.date ? 700 : 400, border: d.date === today ? '1px solid rgba(240,192,64,.4)' : '1px solid transparent',
                   }}>{d.score || d.num}</div>
                 ))}
               </div>
-              <p style={{ fontSize: '.5rem', color: 'rgba(245,240,232,.2)', textAlign: 'center', marginBottom: 12 }}>Tap a highlighted date to view that entry</p>
+              <p style={{ fontSize: '.5rem', color: 'rgba(240,240,240,.45)', textAlign: 'center', marginBottom: 12 }}>Tap a highlighted date to view that entry</p>
             </div>
-            {selectedDate ? <DayEntry dk={selectedDate} /> : entryDates.length > 0 ? entryDates.map(dk => <DayEntry key={dk} dk={dk} />) : <p style={{ fontSize: '.8rem', color: 'rgba(245,240,232,.25)', textAlign: 'center', padding: 30 }}>No entries yet.</p>}
+            {selectedDate ? <DayEntry dk={selectedDate} /> : entryDates.length > 0 ? entryDates.map(dk => <DayEntry key={dk} dk={dk} />) : <p style={{ fontSize: '.8rem', color: 'rgba(240,240,240,.55)', textAlign: 'center', padding: 30 }}>No entries yet.</p>}
           </>
         )}
 
         {view === 'trends' && (
           <>
             <div style={{ marginTop: 8, marginBottom: 20 }}>
-              <h3 style={{ fontSize: '.65rem', color: '#c9a84c', letterSpacing: '.15em', textTransform: 'uppercase', marginBottom: 12, opacity: .5 }}>Money Mindset Over Time</h3>
+              <h3 style={{ fontSize: '.65rem', color: '#f0c040', letterSpacing: '.15em', textTransform: 'uppercase', marginBottom: 12, opacity: .85 }}>Money Mindset Over Time</h3>
               {history.length >= 2 ? (
-                <div style={{ background: 'rgba(245,240,232,.03)', borderRadius: 12, padding: '16px 12px 8px', border: '1px solid rgba(201,168,76,.06)' }}>
+                <div style={{ background: 'rgba(240,240,240,.05)', borderRadius: 12, padding: '16px 12px 8px', border: '1px solid rgba(240,192,64,.06)' }}>
                   <Sparkline data={history} />
-                  <div style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 8px 0', fontSize: '.5rem', color: 'rgba(245,240,232,.2)' }}><span>{history[0].label}</span><span>{history.at(-1).label}</span></div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 8px 0', fontSize: '.5rem', color: 'rgba(240,240,240,.45)' }}><span>{history[0].label}</span><span>{history.at(-1).label}</span></div>
                 </div>
-              ) : <p style={{ fontSize: '.75rem', color: 'rgba(245,240,232,.25)', textAlign: 'center', padding: 20 }}>{history.length === 0 ? 'Log your first mindset score to start tracking' : 'One more day to see your trend line'}</p>}
+              ) : <p style={{ fontSize: '.75rem', color: 'rgba(240,240,240,.55)', textAlign: 'center', padding: 20 }}>{history.length === 0 ? 'Log your first mindset score to start tracking' : 'One more day to see your trend line'}</p>}
             </div>
             <div style={{ display: 'flex', gap: 10, marginBottom: 20 }}>
               {[{ n: avgScore, l: 'Avg Score' }, { n: trend ? (Number(trend) >= 0 ? `+${trend}` : trend) : '—', l: '7d Trend', c: trend ? (Number(trend) >= 0 ? '#4cc97a' : '#c94c4c') : null }, { n: streak.current, l: 'Streak' }, { n: streak.longest, l: 'Best' }].map((s, i) => (
-                <div key={i} style={{ flex: 1, textAlign: 'center', background: 'rgba(201,168,76,.04)', borderRadius: 10, padding: '10px 4px' }}>
-                  <div style={{ fontSize: '1.2rem', color: s.c || '#c9a84c', fontWeight: 700 }}>{s.n}</div>
-                  <div style={{ fontSize: '.5rem', color: '#e8d59a', opacity: .35, letterSpacing: '.05em', textTransform: 'uppercase', marginTop: 2 }}>{s.l}</div>
+                <div key={i} style={{ flex: 1, textAlign: 'center', background: 'rgba(240,192,64,.04)', borderRadius: 10, padding: '10px 4px' }}>
+                  <div style={{ fontSize: '1.2rem', color: s.c || '#f0c040', fontWeight: 700 }}>{s.n}</div>
+                  <div style={{ fontSize: '.5rem', color: '#f5e070', opacity: .7, letterSpacing: '.05em', textTransform: 'uppercase', marginTop: 2 }}>{s.l}</div>
                 </div>
               ))}
             </div>
@@ -389,22 +389,22 @@ export default function Journal({ onLogout }) {
               const shifts = Object.keys(entries).sort().filter(k => entries[k]?.ms_am && entries[k]?.ms_pm).map(k => ({ shift: entries[k].ms_pm - entries[k].ms_am, label: new Date(k + 'T12:00:00').toLocaleDateString('en', { month: 'short', day: 'numeric' }) }));
               if (!shifts.length) return null;
               const avg = (shifts.reduce((a, s) => a + s.shift, 0) / shifts.length).toFixed(1);
-              return (<div style={{ marginBottom: 20, background: 'rgba(245,240,232,.03)', borderRadius: 12, padding: '14px 16px', border: '1px solid rgba(201,168,76,.06)' }}><h3 style={{ fontSize: '.65rem', color: '#c9a84c', letterSpacing: '.15em', textTransform: 'uppercase', marginBottom: 8, opacity: .5 }}>Daily Shift (AM → PM)</h3><div style={{ display: 'flex', gap: 3, alignItems: 'center', height: 40 }}>{shifts.slice(-20).map((s, i) => (<div key={i} title={`${s.label}: ${s.shift >= 0 ? '+' : ''}${s.shift}`} style={{ flex: 1, borderRadius: 2, height: `${Math.max(4, Math.abs(s.shift) * 8)}px`, background: s.shift >= 0 ? 'rgba(76,200,122,.5)' : 'rgba(201,76,76,.5)' }} />))}</div><p style={{ fontSize: '.6rem', color: 'rgba(245,240,232,.3)', marginTop: 6, textAlign: 'center' }}>Avg shift: <span style={{ color: Number(avg) >= 0 ? '#4cc97a' : '#c96a4c' }}>{Number(avg) >= 0 ? '+' : ''}{avg}</span></p></div>);
+              return (<div style={{ marginBottom: 20, background: 'rgba(240,240,240,.05)', borderRadius: 12, padding: '14px 16px', border: '1px solid rgba(240,192,64,.06)' }}><h3 style={{ fontSize: '.65rem', color: '#f0c040', letterSpacing: '.15em', textTransform: 'uppercase', marginBottom: 8, opacity: .85 }}>Daily Shift (AM → PM)</h3><div style={{ display: 'flex', gap: 3, alignItems: 'center', height: 40 }}>{shifts.slice(-20).map((s, i) => (<div key={i} title={`${s.label}: ${s.shift >= 0 ? '+' : ''}${s.shift}`} style={{ flex: 1, borderRadius: 2, height: `${Math.max(4, Math.abs(s.shift) * 8)}px`, background: s.shift >= 0 ? 'rgba(76,200,122,.5)' : 'rgba(201,76,76,.5)' }} />))}</div><p style={{ fontSize: '.6rem', color: 'rgba(240,240,240,.65)', marginTop: 6, textAlign: 'center' }}>Avg shift: <span style={{ color: Number(avg) >= 0 ? '#4cc97a' : '#c96a4c' }}>{Number(avg) >= 0 ? '+' : ''}{avg}</span></p></div>);
             })()}
             <div>
-              <h3 style={{ fontSize: '.65rem', color: '#c9a84c', letterSpacing: '.15em', textTransform: 'uppercase', marginBottom: 10, opacity: .5 }}>Mindset Log</h3>
+              <h3 style={{ fontSize: '.65rem', color: '#f0c040', letterSpacing: '.15em', textTransform: 'uppercase', marginBottom: 10, opacity: .85 }}>Mindset Log</h3>
               {history.slice().reverse().slice(0, 10).map(h => (
-                <div key={h.date} onClick={() => { setSelectedDate(h.date); setView('entries'); }} style={{ display: 'flex', gap: 10, alignItems: 'flex-start', marginBottom: 8, padding: '8px 10px', background: 'rgba(245,240,232,.02)', borderRadius: 8, cursor: 'pointer' }}>
+                <div key={h.date} onClick={() => { setSelectedDate(h.date); setView('entries'); }} style={{ display: 'flex', gap: 10, alignItems: 'flex-start', marginBottom: 8, padding: '8px 10px', background: 'rgba(240,240,240,.04)', borderRadius: 8, cursor: 'pointer' }}>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 3, alignItems: 'center' }}>
-                    {h.am > 0 && <div style={{ width: 22, height: 22, borderRadius: 4, background: SCORE_COLORS[h.am], display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '.6rem', fontWeight: 700, color: '#1a1714' }}>{h.am}</div>}
+                    {h.am > 0 && <div style={{ width: 22, height: 22, borderRadius: 4, background: SCORE_COLORS[h.am], display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '.6rem', fontWeight: 700, color: '#000000' }}>{h.am}</div>}
                     {h.am > 0 && h.pm > 0 && <span style={{ fontSize: '.45rem', color: h.pm >= h.am ? '#4cc97a' : '#c96a4c' }}>→</span>}
-                    {h.pm > 0 && <div style={{ width: 22, height: 22, borderRadius: 4, background: SCORE_COLORS[h.pm], display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '.6rem', fontWeight: 700, color: '#1a1714' }}>{h.pm}</div>}
+                    {h.pm > 0 && <div style={{ width: 22, height: 22, borderRadius: 4, background: SCORE_COLORS[h.pm], display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '.6rem', fontWeight: 700, color: '#000000' }}>{h.pm}</div>}
                   </div>
-                  <div style={{ flex: 1 }}><div style={{ fontSize: '.6rem', color: 'rgba(245,240,232,.3)', marginBottom: 2 }}>{h.label}</div>{h.amNote && <p style={{ fontSize: '.68rem', color: 'rgba(245,240,232,.4)', lineHeight: 1.3, margin: '0 0 2px' }}>☀ {h.amNote}</p>}{h.pmNote && <p style={{ fontSize: '.68rem', color: 'rgba(245,240,232,.4)', lineHeight: 1.3, margin: 0 }}>☽ {h.pmNote}</p>}</div>
-                  <span style={{ fontSize: '.55rem', color: 'rgba(201,168,76,.25)', marginTop: 2 }}>→</span>
+                  <div style={{ flex: 1 }}><div style={{ fontSize: '.6rem', color: 'rgba(240,240,240,.65)', marginBottom: 2 }}>{h.label}</div>{h.amNote && <p style={{ fontSize: '.68rem', color: 'rgba(240,240,240,.75)', lineHeight: 1.3, margin: '0 0 2px' }}>☀ {h.amNote}</p>}{h.pmNote && <p style={{ fontSize: '.68rem', color: 'rgba(240,240,240,.75)', lineHeight: 1.3, margin: 0 }}>☽ {h.pmNote}</p>}</div>
+                  <span style={{ fontSize: '.55rem', color: 'rgba(240,192,64,.25)', marginTop: 2 }}>→</span>
                 </div>
               ))}
-              {!history.length && <p style={{ fontSize: '.75rem', color: 'rgba(245,240,232,.2)', textAlign: 'center', padding: 16 }}>No entries yet</p>}
+              {!history.length && <p style={{ fontSize: '.75rem', color: 'rgba(240,240,240,.45)', textAlign: 'center', padding: 16 }}>No entries yet</p>}
             </div>
             <div style={{ textAlign: 'center', marginTop: 28 }}>
               <button onClick={async () => { if (confirm('Clear all data? Cannot be undone.')) { await deleteAllEntries(); setEntries({}); setMs(0); setMsNote(""); } }}
