@@ -59,8 +59,17 @@ const FIELD_META = {
   weekly: { label: "Weekly Deep Dive", color: "#c94c6e", icon: "★" },
 };
 
-const dateKey = (d = new Date()) => d.toISOString().slice(0, 10);
-const dayIndex = (d = new Date()) => Math.floor((d - new Date('2024-01-01')) / 86400000);
+const dateKey = (d = new Date()) => {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+};
+const dayIndex = (d = new Date()) => {
+  const local = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+  const epoch = new Date(2024, 0, 1);
+  return Math.floor((local - epoch) / 86400000);
+};
 const dayIndexForDate = (ds) => dayIndex(new Date(ds + 'T12:00:00'));
 const weekIndex = () => Math.floor(dayIndex() / 7);
 const fmtDate = (ds) => new Date(ds + 'T12:00:00').toLocaleDateString('en', { weekday: 'short', month: 'short', day: 'numeric' });
@@ -175,9 +184,9 @@ export default function Journal({ onLogout }) {
   const streak = calcStreak();
   const history = getScoreHistory();
   const avgScore = history.length ? (history.reduce((a, h) => a + h.score, 0) / history.length).toFixed(1) : "—";
-  const r7 = history.length >= 7 ? (history.slice(-7).reduce((a, h) => a + h.score, 0) / 7).toFixed(1) : null;
-  const o7 = history.length >= 14 ? (history.slice(-14, -7).reduce((a, h) => a + h.score, 0) / 7).toFixed(1) : null;
-  const trend = r7 && o7 ? (r7 - o7).toFixed(1) : null;
+  const r7 = history.length >= 7 ? (history.slice(-7).reduce((a, h) => a + h.score, 0) / 7) : null;
+  const o7 = history.length >= 14 ? (history.slice(-14, -7).reduce((a, h) => a + h.score, 0) / 7) : null;
+  const trend = r7 != null && o7 != null ? (r7 - o7).toFixed(1) : null;
 
   const scoreKey = tod === "morning" ? "ms_am" : "ms_pm";
   const noteKey = tod === "morning" ? "msn_am" : "msn_pm";
