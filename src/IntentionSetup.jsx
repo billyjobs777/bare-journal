@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { generatePrompts, saveIntention } from './db'
 
 const SERIF = "'Cormorant Garamond', Georgia, serif"
@@ -18,6 +18,17 @@ const THEME_NAMES = {
   gratitude: 'Gratitude Journal',
   creativity: 'Creativity Journal',
 }
+
+const GENERATING_LINES = [
+  "Crafting your personalized journey…",
+  "Listening to what you wrote…",
+  "Shaping the questions only you need…",
+  "Weaving your intention into the days ahead…",
+  "Finding the words that will meet you each morning…",
+  "Drawing a path through the next 90 days…",
+  "Something is being made for you…",
+  "Almost there. The ritual is taking form…",
+]
 
 const PLACEHOLDERS = {
   wealth:       'e.g. "Double my income, clear my debt, and stop letting fear drive my money decisions"',
@@ -43,6 +54,20 @@ export default function IntentionSetup({ config, onComplete, onBack }) {
   const [intention, setIntention] = useState('')
   const [status, setStatus] = useState('idle') // idle | warning | generating | error
   const [suggestedJournal, setSuggestedJournal] = useState(null)
+  const [lineIndex, setLineIndex] = useState(0)
+  const [lineVisible, setLineVisible] = useState(true)
+
+  useEffect(() => {
+    if (status !== 'generating') return
+    const cycle = setInterval(() => {
+      setLineVisible(false)
+      setTimeout(() => {
+        setLineIndex(i => (i + 1) % GENERATING_LINES.length)
+        setLineVisible(true)
+      }, 400)
+    }, 5000)
+    return () => clearInterval(cycle)
+  }, [status])
 
   const handleContinue = () => {
     if (!intention.trim()) return
@@ -170,8 +195,14 @@ export default function IntentionSetup({ config, onComplete, onBack }) {
 
         {/* Generating message */}
         {isGenerating && (
-          <p style={{ textAlign: 'center', fontFamily: SERIF, fontStyle: 'italic', fontSize: '1rem', color: `rgba(${config.colorRgb},.55)`, marginTop: 16, lineHeight: 1.55 }}>
-            Crafting 90 personalized daily questions and 13 weekly prompts. This takes about 15–20 seconds.
+          <p style={{
+            textAlign: 'center', fontFamily: SERIF, fontStyle: 'italic',
+            fontSize: '1.1rem', color: `rgba(${config.colorRgb},.6)`,
+            marginTop: 20, lineHeight: 1.55,
+            opacity: lineVisible ? 1 : 0,
+            transition: 'opacity .4s ease',
+          }}>
+            {GENERATING_LINES[lineIndex]}
           </p>
         )}
 
