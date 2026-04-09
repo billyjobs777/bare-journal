@@ -31,12 +31,8 @@ export async function saveIntention(journalType, intention, generatedPrompts) {
 }
 
 export async function generatePrompts(journalType, intention) {
-  const { data: { session } } = await supabase.auth.getSession();
-  if (!session) return null;
-
   const { data, error } = await supabase.functions.invoke('generate-prompts', {
     body: { journalType, intention },
-    headers: { Authorization: `Bearer ${session.access_token}` },
   });
 
   if (error) { console.error('Generate prompts error:', error); return null; }
