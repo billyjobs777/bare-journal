@@ -35,11 +35,11 @@ export default function Auth() {
         animation: 'fadeUp .6s both',
       }}>
         <h1 style={{
-          fontSize: '1.1rem', color: '#f0c040', letterSpacing: '.2em',
-          textTransform: 'uppercase', fontWeight: 400, marginBottom: 4,
-        }}>Wealth Journal</h1>
-        <p style={{ fontSize: '.85rem', color: '#f5e070', opacity: .65, letterSpacing: '.1em', marginBottom: 40 }}>
-          90-Day Foundations
+          fontSize: '1.8rem', color: '#f0f0f0', letterSpacing: '-.01em',
+          fontWeight: 700, marginBottom: 8,
+        }}>Bare Journal</h1>
+        <p style={{ fontSize: '1rem', color: 'rgba(240,240,240,.4)', marginBottom: 40 }}>
+          Your daily practice
         </p>
 
         {status === 'sent' ? (

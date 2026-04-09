@@ -47,3 +47,16 @@ $$ language plpgsql;
 create trigger journal_entries_updated_at
   before update on journal_entries
   for each row execute function update_updated_at();
+
+-- ============================================================
+-- MIGRATION: Add journal_type support (run if table exists)
+-- ============================================================
+-- Add journal_type column (existing rows default to 'wealth')
+alter table journal_entries
+  add column if not exists journal_type text not null default 'wealth';
+
+-- Drop old unique index (user_id, entry_date) and replace with
+-- (user_id, entry_date, journal_type) to allow same date across journals
+drop index if exists journal_entries_user_date;
+create unique index if not exists journal_entries_user_date_type
+  on journal_entries(user_id, entry_date, journal_type);
