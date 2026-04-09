@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
-import { loadAllEntries, saveEntry, deleteAllEntries } from './db'
+import { loadAllEntries, saveEntry, deleteAllEntries, loadIntention } from './db'
+import IntentionSetup from './IntentionSetup'
 
 const dateKey = (d = new Date()) => {
   const y = d.getFullYear();
@@ -24,6 +25,7 @@ export default function Journal({ onLogout, onBack, config }) {
   const [saved, setSaved] = useState({});
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [intention, setIntention] = useState(null); // null=loading, false=not set, object=set
   const [ms, setMs] = useState(0);
   const [msNote, setMsNote] = useState("");
   const [msSaved, setMsSaved] = useState(false);
@@ -31,8 +33,14 @@ export default function Journal({ onLogout, onBack, config }) {
 
   const today = dateKey();
   const isMonday = new Date().getDay() === 1;
-  const todayLofty = config.loftyQuestions[dayIndex() % config.loftyQuestions.length];
-  const thisWeekly = config.weeklyPrompts[weekIndex() % config.weeklyPrompts.length];
+  const loftyPool = intention?.generated_prompts?.loftyQuestions?.length >= 90
+    ? intention.generated_prompts.loftyQuestions
+    : config.loftyQuestions;
+  const weeklyPool = intention?.generated_prompts?.weeklyPrompts?.length >= 13
+    ? intention.generated_prompts.weeklyPrompts
+    : config.weeklyPrompts;
+  const todayLofty = loftyPool[dayIndex() % loftyPool.length];
+  const thisWeekly = weeklyPool[weekIndex() % weeklyPool.length];
 
   useEffect(() => {
     setTod(new Date().getHours() < 15 ? "morning" : "evening");
@@ -40,8 +48,12 @@ export default function Journal({ onLogout, onBack, config }) {
   }, []);
 
   const loadData = async () => {
-    const data = await loadAllEntries(config.id);
+    const [data, intentionData] = await Promise.all([
+      loadAllEntries(config.id),
+      loadIntention(config.id),
+    ]);
     setEntries(data);
+    setIntention(intentionData || false);
     const t = dateKey();
     const todTod = new Date().getHours() < 15 ? "morning" : "evening";
     const sk = todTod === "morning" ? "ms_am" : "ms_pm";
@@ -149,7 +161,7 @@ export default function Journal({ onLogout, onBack, config }) {
 
   const DayEntry = ({ dk }) => {
     const e = entries[dk]; if (!e) return null;
-    const loftyQ = config.loftyQuestions[dayIndexForDate(dk) % config.loftyQuestions.length];
+    const loftyQ = loftyPool[dayIndexForDate(dk) % loftyPool.length];
     const journalFields = Object.keys(e).filter(f => !['ms_am','ms_pm','msn_am','msn_pm'].includes(f) && e[f]?.trim?.());
     const isToday = dk === today;
     return (
@@ -216,6 +228,14 @@ export default function Journal({ onLogout, onBack, config }) {
     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh', color: config.color }}>
       Loading...
     </div>
+  );
+
+  if (intention === false) return (
+    <IntentionSetup
+      config={config}
+      onBack={onBack}
+      onComplete={(data) => setIntention(data)}
+    />
   );
 
   return (

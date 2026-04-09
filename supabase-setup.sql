@@ -60,3 +60,30 @@ alter table journal_entries
 drop index if exists journal_entries_user_date;
 create unique index if not exists journal_entries_user_date_type
   on journal_entries(user_id, entry_date, journal_type);
+
+-- ============================================================
+-- MIGRATION: Add journal_intentions table for AI-generated prompts
+-- ============================================================
+create table if not exists journal_intentions (
+  id uuid default gen_random_uuid() primary key,
+  user_id uuid references auth.users(id) on delete cascade not null,
+  journal_type text not null,
+  intention text not null,
+  generated_prompts jsonb not null default '{}',
+  created_at timestamptz default now(),
+  unique(user_id, journal_type)
+);
+
+alter table journal_intentions enable row level security;
+
+create policy "Users can read own intentions"
+  on journal_intentions for select
+  using (auth.uid() = user_id);
+
+create policy "Users can insert own intentions"
+  on journal_intentions for insert
+  with check (auth.uid() = user_id);
+
+create policy "Users can update own intentions"
+  on journal_intentions for update
+  using (auth.uid() = user_id);
