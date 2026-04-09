@@ -74,6 +74,24 @@ export async function saveEntry(dateStr, data, journalType = 'wealth') {
   return true;
 }
 
+export function calcStreakFromEntries(entries) {
+  const fmt = (d) => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+  const has = (k) => entries[k]?.ms_am || entries[k]?.ms_pm;
+  let d = new Date();
+  let current = 0;
+  if (has(fmt(d))) { current = 1; d.setDate(d.getDate() - 1); }
+  else { d.setDate(d.getDate() - 1); }
+  while (has(fmt(d))) { current++; d.setDate(d.getDate() - 1); }
+  return current;
+}
+
+export async function loadAllEntriesForJournals(journalIds) {
+  const results = await Promise.all(journalIds.map(id => loadAllEntries(id)));
+  const map = {};
+  journalIds.forEach((id, i) => { map[id] = results[i]; });
+  return map;
+}
+
 export async function deleteAllEntries(journalType = 'wealth') {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return false;

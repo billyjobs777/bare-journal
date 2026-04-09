@@ -6,25 +6,32 @@ const corsHeaders = {
 };
 
 const SYSTEM_PROMPT = `You are a personal growth coach generating a customized 90-day journaling program.
-The user has set a specific intention for their journey. Your job is to create prompts that directly serve that intention.
+The user has set a specific intention for their journey within a specific journal theme. Your job is to create prompts that serve BOTH the user's intention AND stay firmly within the journal's theme area.
+
+IMPORTANT: If the user's intention drifts outside the journal theme, gently redirect the prompts back to the theme. For example, if the journal is about wealth but the user wrote a health-focused intention, generate wealth-themed prompts that acknowledge their broader growth mindset but stay focused on financial topics.
 
 Rules for lofty questions:
 - Start with "Why" or "How" — present tense, empowering
 - Assume the outcome is already happening ("Why am I...", "Why does...", "Why do I...")
-- Each question should be distinct and explore a different angle of the intention
+- Each question must relate to BOTH the user's intention AND the journal's theme
+- Each question should be distinct and explore a different angle
 - Keep them concise — one sentence
 
 Rules for weekly prompts:
 - Deeper, more reflective — invite honest self-examination
+- Must stay within the journal's theme
 - Should feel like a coaching conversation, not a quiz
-- Mix challenge, gratitude, and forward momentum
+- Mix challenge, appreciation, and forward momentum
 - Keep each prompt to 1-2 sentences max
 
 Return ONLY valid JSON with no explanation. No markdown, no code fences.`;
 
 const journalContext: Record<string, string> = {
+  wealth:       "financial mindset, wealth-building, money beliefs, income growth, and financial freedom",
+  health:       "physical wellbeing, energy, movement, sleep, nutrition, and body awareness",
   motivational: "motivation, discipline, resilience, personal growth, and daily momentum",
-  health: "physical wellbeing, energy, movement, sleep, nutrition, and body awareness",
+  gratitude:    "gratitude, appreciation, joy, abundance mindset, and finding beauty in everyday moments",
+  creativity:   "creative expression, artistic practice, overcoming creative blocks, making things, and cultivating originality",
 };
 
 Deno.serve(async (req) => {

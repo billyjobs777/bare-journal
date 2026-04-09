@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { loadAllEntries, saveEntry, deleteAllEntries, loadIntention } from './db'
 import IntentionSetup from './IntentionSetup'
+import ProfileMenu from './ProfileMenu'
 
 const dateKey = (d = new Date()) => {
   const y = d.getFullYear();
@@ -17,10 +18,11 @@ const dayIndexForDate = (ds) => dayIndex(new Date(ds + 'T12:00:00'));
 const weekIndex = () => Math.floor(dayIndex() / 7);
 const fmtDate = (ds) => new Date(ds + 'T12:00:00').toLocaleDateString('en', { weekday: 'short', month: 'short', day: 'numeric' });
 
-export default function Journal({ onLogout, onBack, config }) {
+export default function Journal({ onLogout, onBack, config, user, displayName, onNameUpdate }) {
   const [entries, setEntries] = useState({});
   const [view, setView] = useState("journal");
   const [tod, setTod] = useState("morning");
+  const [activePromptIndex, setActivePromptIndex] = useState(0);
   const [drafts, setDrafts] = useState({});
   const [saved, setSaved] = useState({});
   const [loading, setLoading] = useState(true);
@@ -69,6 +71,7 @@ export default function Journal({ onLogout, onBack, config }) {
       const nk = tod === "morning" ? "msn_am" : "msn_pm";
       setMs(entries[today]?.[sk] || 0);
       setMsNote(entries[today]?.[nk] || "");
+      setActivePromptIndex(0);
     }
   }, [tod, entries, today, view]);
 
@@ -165,7 +168,7 @@ export default function Journal({ onLogout, onBack, config }) {
     const journalFields = Object.keys(e).filter(f => !['ms_am','ms_pm','msn_am','msn_pm'].includes(f) && e[f]?.trim?.());
     const isToday = dk === today;
     return (
-      <div style={{ marginBottom: 16, background: 'rgba(240,240,240,.04)', border: `1px solid ${isToday ? `rgba(${config.colorRgb},.25)` : `rgba(${config.colorRgb},.08)`}`, borderRadius: 12, padding: '16px 18px', animation: 'fadeUp .3s both' }}>
+      <div style={{ marginBottom: 16, background: 'rgba(236,232,224,.04)', border: `1px solid ${isToday ? `rgba(${config.colorRgb},.25)` : `rgba(${config.colorRgb},.08)`}`, borderRadius: 12, padding: '16px 18px', animation: 'fadeUp .3s both' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
           <span style={{ fontSize: '1rem', color: config.color, fontWeight: 700 }}>{fmtDate(dk)}</span>
           <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
@@ -179,7 +182,7 @@ export default function Journal({ onLogout, onBack, config }) {
             )}
           </div>
         </div>
-        <div style={{ fontSize: '.95rem', color: config.color, opacity: .65, fontStyle: 'italic', marginBottom: 10, borderLeft: `2px solid rgba(${config.colorRgb},.25)`, paddingLeft: 10 }}>{loftyQ}</div>
+        <div style={{ fontFamily: "'Cormorant Garamond', Georgia, serif", fontSize: '1.05rem', color: config.color, opacity: .65, fontStyle: 'italic', marginBottom: 10, borderLeft: `2px solid rgba(${config.colorRgb},.25)`, paddingLeft: 10 }}>{loftyQ}</div>
         {journalFields.map(f => {
           const meta = config.fieldMeta[f] || { label: f, color: config.color, icon: '·' };
           return (
@@ -188,14 +191,14 @@ export default function Journal({ onLogout, onBack, config }) {
                 <span style={{ fontSize: '1rem', color: meta.color, opacity: .7 }}>{meta.icon}</span>
                 <span style={{ fontSize: '.85rem', letterSpacing: '.08em', textTransform: 'uppercase', color: meta.color, opacity: .7 }}>{meta.label}</span>
               </div>
-              <p style={{ fontSize: '1rem', color: '#f0f0f0', lineHeight: 1.6, margin: 0, paddingLeft: 14 }}>{e[f]}</p>
+              <p style={{ fontSize: '1rem', color: '#ece8e0', lineHeight: 1.6, margin: 0, paddingLeft: 14 }}>{e[f]}</p>
             </div>
           );
         })}
         {(e.msn_am || e.msn_pm) && (
           <div style={{ marginTop: 8, borderTop: `1px solid rgba(${config.colorRgb},.08)`, paddingTop: 8 }}>
-            {e.msn_am && <p style={{ fontSize: '1rem', color: 'rgba(240,240,240,.65)', lineHeight: 1.4, margin: '0 0 3px' }}>☀ {e.msn_am}</p>}
-            {e.msn_pm && <p style={{ fontSize: '1rem', color: 'rgba(240,240,240,.65)', lineHeight: 1.4, margin: 0 }}>☽ {e.msn_pm}</p>}
+            {e.msn_am && <p style={{ fontSize: '1rem', color: 'rgba(236,232,224,.65)', lineHeight: 1.4, margin: '0 0 3px' }}>☀ {e.msn_am}</p>}
+            {e.msn_pm && <p style={{ fontSize: '1rem', color: 'rgba(236,232,224,.65)', lineHeight: 1.4, margin: 0 }}>☽ {e.msn_pm}</p>}
           </div>
         )}
       </div>
@@ -225,8 +228,8 @@ export default function Journal({ onLogout, onBack, config }) {
   };
 
   if (loading) return (
-    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh', color: config.color }}>
-      Loading...
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh', color: config.color, fontFamily: "'Cormorant Garamond', Georgia, serif", fontSize: '1.2rem', fontStyle: 'italic' }}>
+      Opening...
     </div>
   );
 
@@ -244,49 +247,66 @@ export default function Journal({ onLogout, onBack, config }) {
       <div style={{ padding: '20px 20px 0', maxWidth: 520, margin: '0 auto' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
           <div>
-            <button onClick={onBack} style={{ background: 'none', border: 'none', color: 'rgba(240,240,240,.4)', fontSize: '1rem', cursor: 'pointer', padding: '0 0 6px', fontFamily: 'inherit', display: 'flex', alignItems: 'center', gap: 4 }}>
+            <button onClick={onBack} style={{ background: 'none', border: 'none', color: 'rgba(236,232,224,.35)', fontSize: '1rem', cursor: 'pointer', padding: '0 0 6px', fontFamily: "'Cormorant Garamond', Georgia, serif", display: 'flex', alignItems: 'center', gap: 4 }}>
               ‹ All journals
             </button>
-            <h1 style={{ fontSize: '1.2rem', color: config.color, letterSpacing: '.05em', fontWeight: 600, margin: 0 }}>{config.name}</h1>
-            <p style={{ fontSize: '.95rem', color: 'rgba(240,240,240,.4)', margin: '3px 0 0' }}>Day {Math.max(1, Object.keys(entries).length)} of 90</p>
+            <h1 style={{ fontFamily: "'Cormorant Garamond', Georgia, serif", fontSize: '1.5rem', color: config.color, letterSpacing: '.02em', fontWeight: 600, margin: 0 }}>{config.name}</h1>
+            <p style={{ fontSize: '.9rem', color: 'rgba(236,232,224,.35)', margin: '3px 0 0' }}>Day {Math.max(1, Object.keys(entries).length)} of 90</p>
           </div>
-          <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
-            <div style={{ textAlign: 'right' }}>
-              <div style={{ fontSize: '1.5rem', color: config.color, fontWeight: 700, lineHeight: 1 }}>{streak.current}</div>
-              <div style={{ fontSize: '.85rem', color: 'rgba(240,240,240,.45)', textTransform: 'uppercase', letterSpacing: '.06em' }}>streak</div>
-            </div>
-            <button onClick={onLogout} style={{ background: 'none', border: `1px solid rgba(${config.colorRgb},.25)`, color: `rgba(${config.colorRgb},.6)`, padding: '5px 12px', borderRadius: 8, fontSize: '1rem', cursor: 'pointer', fontFamily: 'inherit' }}>Out</button>
+          <div style={{ display: 'flex', gap: 14, alignItems: 'center' }}>
+            {streak.current > 0 && (
+              <div style={{ textAlign: 'right' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, justifyContent: 'flex-end' }}>
+                  <span style={{
+                    fontSize: '.95rem', color: config.color,
+                    filter: `drop-shadow(0 0 ${Math.min(14, 4 + streak.current * 0.7)}px rgba(${config.colorRgb},${Math.min(1, 0.5 + streak.current * 0.04)}))`,
+                  }}>✦</span>
+                  <span style={{ fontFamily: "'Cormorant Garamond', Georgia, serif", fontSize: '1.6rem', color: config.color, fontWeight: 700, lineHeight: 1 }}>{streak.current}</span>
+                </div>
+                <div style={{ fontSize: '.75rem', color: 'rgba(236,232,224,.35)', textTransform: 'uppercase', letterSpacing: '.08em', textAlign: 'right' }}>streak</div>
+              </div>
+            )}
+            <ProfileMenu user={user} displayName={displayName} onNameUpdate={onNameUpdate} onLogout={onLogout} accentColor={config.color} accentRgb={config.colorRgb} />
           </div>
         </div>
 
-        {/* Nav tabs */}
-        <div style={{ display: 'flex', marginTop: 16, background: 'rgba(255,255,255,.04)', borderRadius: 10, padding: 3 }}>
-          {[{ id: 'journal', label: '✎ Today' }, { id: 'entries', label: '☰ Entries' }, { id: 'trends', label: '◫ Trends' }].map(t => (
-            <button key={t.id} onClick={() => setView(t.id)} style={{
-              flex: 1, padding: '8px 0', border: 'none', borderRadius: 8,
-              fontSize: '1rem', cursor: 'pointer', fontFamily: 'inherit', fontWeight: view === t.id ? 700 : 400,
-              background: view === t.id ? `rgba(${config.colorRgb},.14)` : 'transparent',
-              color: view === t.id ? config.color : 'rgba(240,240,240,.45)',
-              transition: 'all .2s',
-            }}>{t.label}</button>
-          ))}
-        </div>
-
-        {view === 'journal' && (
-          <div style={{ display: 'flex', marginTop: 8, background: 'rgba(255,255,255,.03)', borderRadius: 8, padding: 2 }}>
-            {['morning', 'evening'].map(t => (
-              <button key={t} onClick={() => setTod(t)} style={{
-                flex: 1, padding: '7px 0', border: 'none', borderRadius: 6,
-                fontSize: '1rem', cursor: 'pointer', fontFamily: 'inherit',
-                background: tod === t ? `rgba(${config.colorRgb},.12)` : 'transparent',
-                color: tod === t ? config.color : 'rgba(240,240,240,.4)',
-                transition: 'all .2s',
-              }}>{t === 'morning' ? '☀ Morning' : '☽ Evening'}</button>
+        {/* Nav — icon row + inline morning/evening toggle */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 20 }}>
+          {/* View icons */}
+          <div style={{ display: 'flex', gap: 6 }}>
+            {[
+              { id: 'journal', icon: '✎', title: 'Today' },
+              { id: 'entries', icon: '☰', title: 'Entries' },
+              { id: 'trends', icon: '◫', title: 'Trends' },
+            ].map(t => (
+              <button key={t.id} onClick={() => setView(t.id)} title={t.title} style={{
+                width: 40, height: 40, border: 'none', borderRadius: 10, cursor: 'pointer',
+                fontSize: '1.15rem', fontFamily: 'inherit',
+                background: view === t.id ? `rgba(${config.colorRgb},.15)` : 'transparent',
+                color: view === t.id ? config.color : 'rgba(236,232,224,.3)',
+                position: 'relative', transition: 'all .2s',
+                boxShadow: view === t.id ? `0 0 0 1px rgba(${config.colorRgb},.25)` : 'none',
+              }}>{t.icon}</button>
             ))}
           </div>
-        )}
 
-        {saving && <div style={{ textAlign: 'center', padding: '4px 0', fontSize: '.9rem', color: `rgba(${config.colorRgb},.4)` }}>saving...</div>}
+          {/* Morning / Evening micro-toggle (only in Today) */}
+          {view === 'journal' && (
+            <div style={{ display: 'flex', background: 'rgba(255,255,255,.04)', borderRadius: 20, padding: 2 }}>
+              {[['morning', '☀'], ['evening', '☽']].map(([t, icon]) => (
+                <button key={t} onClick={() => setTod(t)} title={t} style={{
+                  padding: '5px 14px', border: 'none', borderRadius: 18, cursor: 'pointer',
+                  fontSize: '1rem', fontFamily: 'inherit',
+                  background: tod === t ? `rgba(${config.colorRgb},.16)` : 'transparent',
+                  color: tod === t ? config.color : 'rgba(236,232,224,.35)',
+                  transition: 'all .2s',
+                }}>{icon}</button>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {saving && <div style={{ textAlign: 'right', padding: '6px 0 0', fontSize: '.85rem', color: `rgba(${config.colorRgb},.4)`, fontStyle: 'italic', fontFamily: "'Cormorant Garamond', Georgia, serif" }}>saving…</div>}
       </div>
 
       {/* Content */}
@@ -295,56 +315,99 @@ export default function Journal({ onLogout, onBack, config }) {
         {/* Today view */}
         {view === 'journal' && (
           <>
-            {prompts.map((p, i) => {
-              const existing = entries[today]?.[p.id] || '';
-              const draft = drafts[p.id] ?? existing;
-              return (
-                <div key={p.id} style={{
-                  marginBottom: 14,
-                  background: p.isQuestion ? `rgba(${config.colorRgb},.04)` : 'rgba(255,255,255,.04)',
-                  border: `1px solid ${p.isQuestion ? `rgba(${config.colorRgb},.18)` : 'rgba(255,255,255,.08)'}`,
-                  borderRadius: 12, padding: '16px 16px 12px',
-                  animation: `fadeUp .4s ${i * .07}s both`,
-                }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-                    <div style={{ width: 8, height: 8, borderRadius: '50%', background: p.color, opacity: existing ? 1 : .3 }} />
-                    <span style={{ fontSize: '.9rem', letterSpacing: '.1em', textTransform: 'uppercase', color: p.color, opacity: .85 }}>{p.label}</span>
-                    {p.weekly && <span style={{ fontSize: '.85rem', background: 'rgba(201,76,110,.15)', color: '#c94c6e', padding: '2px 8px', borderRadius: 10, marginLeft: 'auto' }}>WEEKLY</span>}
-                    {saved[p.id] && <span style={{ fontSize: '.95rem', color: '#4cc97a', marginLeft: 'auto' }}>✓</span>}
+            {/* Prompt card navigator */}
+            <div style={{ marginBottom: 20 }}>
+              {/* Progress dots */}
+              <div style={{ display: 'flex', gap: 6, justifyContent: 'center', marginBottom: 20 }}>
+                {prompts.map((p, i) => (
+                  <button key={i} onClick={() => setActivePromptIndex(i)} style={{
+                    width: i === activePromptIndex ? 22 : 6,
+                    height: 6, borderRadius: 3, border: 'none', cursor: 'pointer',
+                    background: i === activePromptIndex ? config.color : `rgba(${config.colorRgb},.25)`,
+                    transition: 'all .35s ease', padding: 0,
+                  }} />
+                ))}
+              </div>
+
+              {/* Active card */}
+              {prompts.map((p, idx) => {
+                if (idx !== activePromptIndex) return null;
+                const existing = entries[today]?.[p.id] || '';
+                const draft = drafts[p.id] ?? existing;
+                return (
+                  <div key={p.id} style={{
+                    background: `radial-gradient(ellipse at 50% 0%, rgba(${config.colorRgb},.08) 0%, rgba(13,13,18,0) 65%)`,
+                    border: `1px solid rgba(${config.colorRgb},.2)`,
+                    borderRadius: 20,
+                    padding: '32px 24px 24px',
+                    minHeight: 280,
+                    animation: 'fadeUp .5s ease both',
+                  }}>
+                    {/* Label */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 18 }}>
+                      <span style={{ fontSize: '.78rem', letterSpacing: '.14em', textTransform: 'uppercase', color: p.color, opacity: .75 }}>{p.label}</span>
+                      {p.weekly && <span style={{ fontSize: '.75rem', background: 'rgba(201,76,110,.15)', color: '#c94c6e', padding: '2px 8px', borderRadius: 10 }}>WEEKLY</span>}
+                      {saved[p.id] && <span style={{ fontSize: '.85rem', color: '#4cc97a', marginLeft: 'auto' }}>✓ saved</span>}
+                    </div>
+
+                    {/* Prompt question */}
+                    <p style={{
+                      fontFamily: "'Cormorant Garamond', Georgia, serif",
+                      fontSize: p.isQuestion ? '1.55rem' : '1.4rem',
+                      fontWeight: p.isQuestion ? 600 : 400,
+                      fontStyle: p.isQuestion ? 'italic' : 'normal',
+                      color: p.isQuestion ? p.color : '#ece8e0',
+                      lineHeight: 1.45,
+                      margin: '0 0 16px',
+                      whiteSpace: 'pre-line',
+                    }}>{p.q}</p>
+
+                    {p.hint && <p style={{ fontSize: '.9rem', color: p.color, opacity: .55, marginBottom: 16, fontStyle: 'italic' }}>{p.hint}</p>}
+
+                    {!p.isQuestion && (
+                      <>
+                        <textarea
+                          value={draft}
+                          onChange={e => setDrafts(d => ({ ...d, [p.id]: e.target.value }))}
+                          placeholder="Write here..."
+                          rows={p.rows || 3}
+                          style={{ width: '100%', background: 'rgba(13,13,18,.7)', border: `1px solid rgba(${config.colorRgb},.15)`, borderRadius: 12, padding: '14px 16px', color: '#ece8e0', fontSize: '1rem', fontFamily: 'inherit', resize: 'vertical', lineHeight: 1.7, outline: 'none', transition: 'border-color .2s ease' }}
+                          onFocus={e => e.target.style.borderColor = `rgba(${config.colorRgb},.45)`}
+                          onBlur={e => e.target.style.borderColor = `rgba(${config.colorRgb},.15)`}
+                        />
+                        <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 12 }}>
+                          {draft && draft !== existing && (
+                            <button onClick={() => { saveField(p.id, draft); setActivePromptIndex(i => Math.min(prompts.length - 1, i + 1)); }} style={{ background: `rgba(${config.colorRgb},.12)`, border: `1px solid rgba(${config.colorRgb},.3)`, color: config.color, padding: '8px 22px', borderRadius: 10, fontSize: '1rem', cursor: 'pointer', fontFamily: 'inherit', transition: 'background .2s' }}>Save →</button>
+                          )}
+                        </div>
+                      </>
+                    )}
                   </div>
-                  {p.isQuestion ? (
-                    <p style={{ fontSize: '1.05rem', color: p.color, lineHeight: 1.55, marginBottom: 6, fontStyle: 'italic', fontWeight: 600 }}>{p.q}</p>
-                  ) : (
-                    <p style={{ fontSize: '1rem', color: 'rgba(240,240,240,.8)', lineHeight: 1.55, marginBottom: 10, whiteSpace: 'pre-line' }}>{p.q}</p>
-                  )}
-                  {p.hint && <p style={{ fontSize: '.95rem', color: p.color, opacity: .6, marginBottom: 8 }}>{p.hint}</p>}
-                  {!p.isQuestion && (
-                    <>
-                      <textarea
-                        value={draft}
-                        onChange={e => setDrafts(d => ({ ...d, [p.id]: e.target.value }))}
-                        placeholder="Write here..."
-                        rows={p.rows || 2}
-                        style={{ width: '100%', background: 'rgba(0,0,0,.35)', border: `1px solid rgba(${config.colorRgb},.1)`, borderRadius: 8, padding: '10px 13px', color: '#f0f0f0', fontSize: '1rem', fontFamily: 'inherit', resize: 'vertical', lineHeight: 1.6, outline: 'none' }}
-                        onFocus={e => e.target.style.borderColor = `rgba(${config.colorRgb},.35)`}
-                        onBlur={e  => e.target.style.borderColor = `rgba(${config.colorRgb},.1)`}
-                      />
-                      {draft && draft !== existing && (
-                        <button onClick={() => saveField(p.id, draft)} style={{ marginTop: 8, background: `rgba(${config.colorRgb},.12)`, border: `1px solid rgba(${config.colorRgb},.3)`, color: config.color, padding: '6px 16px', borderRadius: 8, fontSize: '1rem', cursor: 'pointer', fontFamily: 'inherit' }}>Save</button>
-                      )}
-                    </>
-                  )}
-                </div>
-              );
-            })}
+                );
+              })}
+
+              {/* Prev / Next */}
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 16 }}>
+                <button
+                  onClick={() => setActivePromptIndex(i => Math.max(0, i - 1))}
+                  disabled={activePromptIndex === 0}
+                  style={{ background: 'none', border: `1px solid rgba(${config.colorRgb},.2)`, color: activePromptIndex === 0 ? `rgba(${config.colorRgb},.2)` : config.color, padding: '8px 20px', borderRadius: 10, fontSize: '1rem', cursor: activePromptIndex === 0 ? 'default' : 'pointer', fontFamily: 'inherit', transition: 'all .2s' }}
+                >‹ Prev</button>
+                <button
+                  onClick={() => setActivePromptIndex(i => Math.min(prompts.length - 1, i + 1))}
+                  disabled={activePromptIndex === prompts.length - 1}
+                  style={{ background: 'none', border: `1px solid rgba(${config.colorRgb},.2)`, color: activePromptIndex === prompts.length - 1 ? `rgba(${config.colorRgb},.2)` : config.color, padding: '8px 20px', borderRadius: 10, fontSize: '1rem', cursor: activePromptIndex === prompts.length - 1 ? 'default' : 'pointer', fontFamily: 'inherit', transition: 'all .2s' }}
+                >Next ›</button>
+              </div>
+            </div>
 
             {/* Mindset check-in */}
-            <div style={{ marginBottom: 14, background: `rgba(${config.colorRgb},.06)`, border: `1px solid rgba(${config.colorRgb},.2)`, borderRadius: 12, padding: '18px 16px', animation: `fadeUp .4s ${prompts.length * .07}s both` }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
-                <span style={{ fontSize: '1rem', letterSpacing: '.08em', textTransform: 'uppercase', color: config.color, fontWeight: 600 }}>{tod === 'morning' ? '☀' : '☽'} Check-In</span>
-                {msSaved && <span style={{ fontSize: '.95rem', color: '#4cc97a', marginLeft: 'auto' }}>✓</span>}
+            <div style={{ marginBottom: 14, background: `radial-gradient(ellipse at 50% 0%, rgba(${config.colorRgb},.07) 0%, rgba(13,13,18,0) 65%)`, border: `1px solid rgba(${config.colorRgb},.2)`, borderRadius: 20, padding: '28px 24px', animation: `fadeUp .55s ease both` }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+                <span style={{ fontSize: '.78rem', letterSpacing: '.14em', textTransform: 'uppercase', color: config.color, opacity: .75 }}>{tod === 'morning' ? '☀' : '☽'} Check-In</span>
+                {msSaved && <span style={{ fontSize: '.85rem', color: '#4cc97a', marginLeft: 'auto' }}>✓ saved</span>}
               </div>
-              <p style={{ fontSize: '1rem', color: 'rgba(240,240,240,.75)', fontStyle: 'italic', marginBottom: 14 }}>
+              <p style={{ fontFamily: "'Cormorant Garamond', Georgia, serif", fontSize: '1.35rem', color: 'rgba(236,232,224,.85)', fontStyle: 'italic', marginBottom: 18, lineHeight: 1.4 }}>
                 {tod === 'morning' ? config.scoreMorningQ : config.scoreEveningQ}
               </p>
               <div style={{ display: 'flex', gap: 5, marginBottom: 8, justifyContent: 'center', flexWrap: 'wrap' }}>
@@ -353,16 +416,16 @@ export default function Journal({ onLogout, onBack, config }) {
                     width: 36, height: 36, borderRadius: 8, border: 'none', cursor: 'pointer',
                     fontSize: '1rem', fontWeight: 700, fontFamily: 'inherit',
                     background: ms === n ? config.scoreColors[n] : 'rgba(255,255,255,.07)',
-                    color: ms === n ? '#000' : 'rgba(240,240,240,.5)',
+                    color: ms === n ? '#000' : 'rgba(236,232,224,.5)',
                     transform: ms === n ? 'scale(1.12)' : 'scale(1)', transition: 'all .15s',
                   }}>{n}</button>
                 ))}
               </div>
-              {ms > 0 && <p style={{ textAlign: 'center', fontSize: '1rem', color: config.scoreColors[ms], marginBottom: 10, fontStyle: 'italic' }}>{config.scoreLabels[ms]}</p>}
+              {ms > 0 && <p style={{ textAlign: 'center', fontSize: '1rem', color: config.scoreColors[ms], marginBottom: 10, fontStyle: 'italic', fontFamily: "'Cormorant Garamond', Georgia, serif" }}>{config.scoreLabels[ms]}</p>}
               <textarea value={msNote} onChange={e => setMsNote(e.target.value)} placeholder="Why this score?" rows={1}
-                style={{ width: '100%', background: 'rgba(0,0,0,.35)', border: `1px solid rgba(${config.colorRgb},.1)`, borderRadius: 8, padding: '9px 13px', color: '#f0f0f0', fontSize: '1rem', fontFamily: 'inherit', resize: 'none', lineHeight: 1.5, outline: 'none' }}
-                onFocus={e => e.target.style.borderColor = `rgba(${config.colorRgb},.35)`}
-                onBlur={e  => e.target.style.borderColor = `rgba(${config.colorRgb},.1)`}
+                style={{ width: '100%', background: 'rgba(13,13,18,.7)', border: `1px solid rgba(${config.colorRgb},.15)`, borderRadius: 12, padding: '12px 16px', color: '#ece8e0', fontSize: '1rem', fontFamily: 'inherit', resize: 'none', lineHeight: 1.5, outline: 'none', transition: 'border-color .2s ease' }}
+                onFocus={e => e.target.style.borderColor = `rgba(${config.colorRgb},.45)`}
+                onBlur={e => e.target.style.borderColor = `rgba(${config.colorRgb},.15)`}
               />
               {ms > 0 && (ms !== existingScore || msNote !== (entries[today]?.[noteKey] || "")) && (
                 <button onClick={saveMindset} style={{ marginTop: 8, background: `rgba(${config.colorRgb},.14)`, border: `1px solid rgba(${config.colorRgb},.35)`, color: config.color, padding: '6px 16px', borderRadius: 8, fontSize: '1rem', cursor: 'pointer', fontFamily: 'inherit' }}>Save</button>
@@ -400,19 +463,19 @@ export default function Journal({ onLogout, onBack, config }) {
                     background: d.isFuture ? 'transparent' : selectedDate === d.date ? `rgba(${config.colorRgb},.6)` : d.score ? `rgba(${d.score >= 7 ? '76,200,122' : d.score >= 4 ? config.colorRgb : '201,76,76'},${.15 + (d.score / 10) * .4})` : d.hasData ? `rgba(${config.colorRgb},.12)` : 'rgba(255,255,255,.05)',
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
                     fontSize: '.9rem',
-                    color: d.isFuture ? 'transparent' : selectedDate === d.date ? '#000' : (d.hasData || d.score) ? '#f0f0f0' : 'rgba(240,240,240,.25)',
+                    color: d.isFuture ? 'transparent' : selectedDate === d.date ? '#000' : (d.hasData || d.score) ? '#ece8e0' : 'rgba(236,232,224,.25)',
                     fontWeight: d.isToday ? 700 : 400,
                     border: d.isToday ? `2px solid rgba(${config.colorRgb},.7)` : '1px solid transparent',
                   }}>{d.isFuture ? '' : d.num}</div>
                 ))}
               </div>
-              <p style={{ fontSize: '.9rem', color: 'rgba(240,240,240,.35)', textAlign: 'center', marginBottom: 16 }}>Tap a day to view that entry</p>
+              <p style={{ fontSize: '.9rem', color: 'rgba(236,232,224,.35)', textAlign: 'center', marginBottom: 16 }}>Tap a day to view that entry</p>
             </div>
             {selectedDate
               ? <DayEntry dk={selectedDate} />
               : entryDates.length > 0
                 ? entryDates.map(dk => <DayEntry key={dk} dk={dk} />)
-                : <p style={{ fontSize: '1rem', color: 'rgba(240,240,240,.4)', textAlign: 'center', padding: 30 }}>No entries yet.</p>
+                : <p style={{ fontSize: '1rem', color: 'rgba(236,232,224,.4)', textAlign: 'center', padding: 30 }}>No entries yet.</p>
             }
           </>
         )}
@@ -425,13 +488,13 @@ export default function Journal({ onLogout, onBack, config }) {
               {history.length >= 2 ? (
                 <div style={{ background: 'rgba(255,255,255,.04)', borderRadius: 12, padding: '16px 12px 8px', border: `1px solid rgba(${config.colorRgb},.1)` }}>
                   <Sparkline data={history} />
-                  <div style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 8px 0', fontSize: '.9rem', color: 'rgba(240,240,240,.4)' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 8px 0', fontSize: '.9rem', color: 'rgba(236,232,224,.4)' }}>
                     <span>{history[0].label}</span>
                     <span>{history.at(-1).label}</span>
                   </div>
                 </div>
               ) : (
-                <p style={{ fontSize: '1rem', color: 'rgba(240,240,240,.4)', textAlign: 'center', padding: 20 }}>
+                <p style={{ fontSize: '1rem', color: 'rgba(236,232,224,.4)', textAlign: 'center', padding: 20 }}>
                   {history.length === 0 ? 'Log your first check-in to start tracking' : 'One more day to see your trend line'}
                 </p>
               )}
@@ -446,7 +509,7 @@ export default function Journal({ onLogout, onBack, config }) {
               ].map((s, i) => (
                 <div key={i} style={{ flex: 1, textAlign: 'center', background: `rgba(${config.colorRgb},.05)`, borderRadius: 10, padding: '12px 4px' }}>
                   <div style={{ fontSize: '1.5rem', color: s.c || config.color, fontWeight: 700 }}>{s.n}</div>
-                  <div style={{ fontSize: '.85rem', color: 'rgba(240,240,240,.45)', textTransform: 'uppercase', letterSpacing: '.05em', marginTop: 3 }}>{s.l}</div>
+                  <div style={{ fontSize: '.85rem', color: 'rgba(236,232,224,.45)', textTransform: 'uppercase', letterSpacing: '.05em', marginTop: 3 }}>{s.l}</div>
                 </div>
               ))}
             </div>
@@ -465,7 +528,7 @@ export default function Journal({ onLogout, onBack, config }) {
                       <div key={i} title={`${s.label}: ${s.shift >= 0 ? '+' : ''}${s.shift}`} style={{ flex: 1, borderRadius: 3, height: `${Math.max(4, Math.abs(s.shift) * 8)}px`, background: s.shift >= 0 ? 'rgba(76,200,122,.55)' : 'rgba(201,76,76,.55)' }} />
                     ))}
                   </div>
-                  <p style={{ fontSize: '.95rem', color: 'rgba(240,240,240,.5)', marginTop: 8, textAlign: 'center' }}>
+                  <p style={{ fontSize: '.95rem', color: 'rgba(236,232,224,.5)', marginTop: 8, textAlign: 'center' }}>
                     Avg shift: <span style={{ color: Number(avg) >= 0 ? '#4cc97a' : '#c96a4c' }}>{Number(avg) >= 0 ? '+' : ''}{avg}</span>
                   </p>
                 </div>
@@ -482,14 +545,14 @@ export default function Journal({ onLogout, onBack, config }) {
                     {h.pm > 0 && <div style={{ width: 26, height: 26, borderRadius: 6, background: config.scoreColors[h.pm], display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1rem', fontWeight: 700, color: '#000' }}>{h.pm}</div>}
                   </div>
                   <div style={{ flex: 1 }}>
-                    <div style={{ fontSize: '.95rem', color: 'rgba(240,240,240,.55)', marginBottom: 3 }}>{h.label}</div>
-                    {h.amNote && <p style={{ fontSize: '1rem', color: 'rgba(240,240,240,.7)', lineHeight: 1.4, margin: '0 0 2px' }}>☀ {h.amNote}</p>}
-                    {h.pmNote && <p style={{ fontSize: '1rem', color: 'rgba(240,240,240,.7)', lineHeight: 1.4, margin: 0 }}>☽ {h.pmNote}</p>}
+                    <div style={{ fontSize: '.95rem', color: 'rgba(236,232,224,.55)', marginBottom: 3 }}>{h.label}</div>
+                    {h.amNote && <p style={{ fontSize: '1rem', color: 'rgba(236,232,224,.7)', lineHeight: 1.4, margin: '0 0 2px' }}>☀ {h.amNote}</p>}
+                    {h.pmNote && <p style={{ fontSize: '1rem', color: 'rgba(236,232,224,.7)', lineHeight: 1.4, margin: 0 }}>☽ {h.pmNote}</p>}
                   </div>
                   <span style={{ fontSize: '1.1rem', color: `rgba(${config.colorRgb},.3)`, marginTop: 4 }}>›</span>
                 </div>
               ))}
-              {!history.length && <p style={{ fontSize: '1rem', color: 'rgba(240,240,240,.35)', textAlign: 'center', padding: 16 }}>No entries yet</p>}
+              {!history.length && <p style={{ fontSize: '1rem', color: 'rgba(236,232,224,.35)', textAlign: 'center', padding: 16 }}>No entries yet</p>}
             </div>
 
             <div style={{ textAlign: 'center', marginTop: 32 }}>

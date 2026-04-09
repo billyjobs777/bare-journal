@@ -10,10 +10,12 @@ function App() {
   const [session, setSession] = useState(null)
   const [loading, setLoading] = useState(true)
   const [activeJournal, setActiveJournal] = useState(null)
+  const [displayName, setDisplayName] = useState('')
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session)
+      setDisplayName(session?.user?.user_metadata?.full_name || '')
       setLoading(false)
     })
 
@@ -39,7 +41,7 @@ function App() {
     return (
       <div style={{
         display: 'flex', alignItems: 'center', justifyContent: 'center',
-        height: '100vh', background: '#000000', color: '#f0c040',
+        height: '100vh', background: '#0d0d12', color: '#f0c040',
         fontFamily: 'inherit', fontSize: '1rem',
       }}>
         Loading...
@@ -50,7 +52,7 @@ function App() {
   if (!session) return <Auth />
 
   if (!activeJournal) {
-    return <Home onSelect={setActiveJournal} onLogout={handleLogout} />
+    return <Home onSelect={setActiveJournal} onLogout={handleLogout} user={session.user} displayName={displayName} onNameUpdate={setDisplayName} />
   }
 
   const config = JOURNALS[activeJournal]
@@ -59,6 +61,9 @@ function App() {
       config={config}
       onBack={() => setActiveJournal(null)}
       onLogout={handleLogout}
+      user={session.user}
+      displayName={displayName}
+      onNameUpdate={setDisplayName}
     />
   )
 }
