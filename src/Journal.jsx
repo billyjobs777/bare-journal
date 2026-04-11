@@ -18,7 +18,7 @@ const dayIndex = (d = new Date()) => {
 const dayIndexForDate = (ds) => dayIndex(new Date(ds + 'T12:00:00'));
 const fmtDate = (ds) => new Date(ds + 'T12:00:00').toLocaleDateString('en', { weekday: 'short', month: 'short', day: 'numeric' });
 
-export default function Journal({ onLogout, onBack, config, user, displayName, onNameUpdate }) {
+export default function Journal({ onLogout, onBack, config, user, displayName, onNameUpdate, onOpenHelp, onOpenFAQ }) {
   const [entries, setEntries] = useState({});
   const [view, setView] = useState("journal");
   const [tod, setTod] = useState("morning");
@@ -418,7 +418,7 @@ export default function Journal({ onLogout, onBack, config, user, displayName, o
             </p>
           </div>
           <div style={{ display: 'flex', gap: 14, alignItems: 'center' }}>
-            <ProfileMenu user={user} displayName={displayName} onNameUpdate={onNameUpdate} onLogout={onLogout} accentColor={config.color} accentRgb={config.colorRgb} />
+            <ProfileMenu user={user} displayName={displayName} onNameUpdate={onNameUpdate} onLogout={onLogout} onOpenHelp={onOpenHelp} onOpenFAQ={onOpenFAQ} accentColor={config.color} accentRgb={config.colorRgb} />
           </div>
         </div>
 

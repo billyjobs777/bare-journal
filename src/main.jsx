@@ -5,12 +5,15 @@ import { JOURNALS } from './journalConfigs'
 import Auth from './Auth'
 import Home from './Home'
 import Journal from './Journal'
+import Help from './Help'
+import FAQ from './FAQ'
 
 function App() {
   const [session, setSession] = useState(null)
   const [loading, setLoading] = useState(true)
   const [activeJournal, setActiveJournal] = useState(null)
   const [displayName, setDisplayName] = useState('')
+  const [overlay, setOverlay] = useState(null) // 'help' | 'faq' | null
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -51,8 +54,11 @@ function App() {
 
   if (!session) return <Auth />
 
+  if (overlay === 'help') return <Help onBack={() => setOverlay(null)} />
+  if (overlay === 'faq') return <FAQ onBack={() => setOverlay(null)} />
+
   if (!activeJournal) {
-    return <Home onSelect={setActiveJournal} onLogout={handleLogout} user={session.user} displayName={displayName} onNameUpdate={setDisplayName} />
+    return <Home onSelect={setActiveJournal} onLogout={handleLogout} user={session.user} displayName={displayName} onNameUpdate={setDisplayName} onOpenHelp={() => setOverlay('help')} onOpenFAQ={() => setOverlay('faq')} />
   }
 
   const config = JOURNALS[activeJournal]
@@ -64,6 +70,8 @@ function App() {
       user={session.user}
       displayName={displayName}
       onNameUpdate={setDisplayName}
+      onOpenHelp={() => setOverlay('help')}
+      onOpenFAQ={() => setOverlay('faq')}
     />
   )
 }

@@ -194,7 +194,7 @@ const CARD_W = 260
 const CARD_GAP = 20
 const STEP = CARD_W + CARD_GAP
 
-export default function Home({ onSelect, onLogout, user, displayName, onNameUpdate }) {
+export default function Home({ onSelect, onLogout, user, displayName, onNameUpdate, onOpenHelp, onOpenFAQ }) {
   const allJournals = Object.values(JOURNALS)
   const MID = Math.floor(allJournals.length / 2) // 2 for 5 journals
   const [journals, setJournals] = useState(allJournals)
@@ -245,7 +245,7 @@ export default function Home({ onSelect, onLogout, user, displayName, onNameUpda
 
       {/* Profile — top right */}
       <div style={{ position: 'absolute', top: 20, right: 20, zIndex: 10 }}>
-        <ProfileMenu user={user} displayName={displayName} onNameUpdate={onNameUpdate} onLogout={onLogout} />
+        <ProfileMenu user={user} displayName={displayName} onNameUpdate={onNameUpdate} onLogout={onLogout} onOpenHelp={onOpenHelp} onOpenFAQ={onOpenFAQ} />
       </div>
 
       {/* Greeting */}

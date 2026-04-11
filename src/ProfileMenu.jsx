@@ -3,7 +3,7 @@ import { supabase } from './supabase'
 
 const SERIF = "'Cormorant Garamond', Georgia, serif"
 
-export default function ProfileMenu({ user, displayName, onNameUpdate, onLogout, accentColor = '#ece8e0', accentRgb = '236,232,224' }) {
+export default function ProfileMenu({ user, displayName, onNameUpdate, onLogout, onOpenHelp, onOpenFAQ, accentColor = '#ece8e0', accentRgb = '236,232,224' }) {
   const [open, setOpen] = useState(false)
   const [editingName, setEditingName] = useState(false)
   const [nameInput, setNameInput] = useState(displayName || '')
@@ -107,10 +107,11 @@ export default function ProfileMenu({ user, displayName, onNameUpdate, onLogout,
 
           {/* Menu items */}
           {[
-            { label: 'Help', icon: '?', soon: true },
+            { label: 'Help', icon: '?', action: () => { setOpen(false); onOpenHelp?.() } },
+            { label: 'FAQ', icon: '◈', action: () => { setOpen(false); onOpenFAQ?.() } },
             { label: 'Account Settings', icon: '⊙', soon: true },
           ].map(item => (
-            <button key={item.label} disabled={item.soon} style={{
+            <button key={item.label} disabled={item.soon} onClick={item.action} style={{
               width: '100%', background: 'none', border: 'none',
               padding: '11px 18px', display: 'flex', alignItems: 'center', gap: 12,
               cursor: item.soon ? 'default' : 'pointer',
