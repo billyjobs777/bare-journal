@@ -327,7 +327,7 @@ export default function Journal({ onLogout, onBack, config, user, displayName, o
           <div style={{
             position: 'fixed', inset: 0, zIndex: 100,
             background: '#0d0d12',
-            display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+            display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'flex-start',
             padding: '32px 28px', animation: 'fadeUp .6s ease both', overflowY: 'auto',
           }}>
             <div style={{ maxWidth: 480, width: '100%' }}>
