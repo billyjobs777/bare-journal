@@ -143,6 +143,20 @@ export async function generateWeeklyReflection(journalType, intention, journeyDa
   return data;
 }
 
+export async function deleteIntention(journalType) {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return false;
+
+  const { error } = await supabase
+    .from('journal_intentions')
+    .delete()
+    .eq('user_id', user.id)
+    .eq('journal_type', journalType);
+
+  if (error) { console.error('Delete intention error:', error); return false; }
+  return true;
+}
+
 export async function deleteAllEntries(journalType = 'wealth') {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return false;

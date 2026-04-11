@@ -1,8 +1,23 @@
 import { useState, useEffect, useRef } from 'react'
-import { loadAllEntries, saveEntry, deleteAllEntries, loadIntention, calcJourneyDay, calcWeekNumber, loadWeeklyReflection, saveWeeklyReflection, generateWeeklyReflection } from './db'
+import { loadAllEntries, saveEntry, deleteAllEntries, deleteIntention, loadIntention, calcJourneyDay, calcWeekNumber, loadWeeklyReflection, saveWeeklyReflection, generateWeeklyReflection } from './db'
 import { JOURNAL_CHAPTERS, STREAK_MILESTONES, getChapterNumber } from './journalConfigs'
 import IntentionSetup from './IntentionSetup'
+import JournalIntro, { JournalIntroContent } from './JournalIntro'
 import ProfileMenu from './ProfileMenu'
+
+// Returns true if the user has at least one real entry within a given chapter's day range
+function hasEntriesInChapter(entries, intention, chNum) {
+  if (!intention?.created_at) return false;
+  const startLocal = new Date(new Date(intention.created_at).toDateString());
+  const chStart = (chNum - 1) * 30 + 1;
+  const chEnd = chNum * 30;
+  return Object.keys(entries).some(dk => {
+    const jd = Math.floor((new Date(dk + 'T12:00:00') - startLocal) / 86400000) + 1;
+    if (jd < chStart || jd > chEnd) return false;
+    const e = entries[dk];
+    return Object.values(e).some(v => v && (typeof v === 'number' ? v > 0 : v?.trim?.()));
+  });
+}
 
 const dateKey = (d = new Date()) => {
   const y = d.getFullYear();
@@ -37,6 +52,9 @@ export default function Journal({ onLogout, onBack, config, user, displayName, o
   const [chapterIntroToShow, setChapterIntroToShow] = useState(null); // 1|2|3|null
   const [celebrationVisible, setCelebrationVisible] = useState(false);
   const [streakBanner, setStreakBanner] = useState(null);
+  const [journalIntroSeen, setJournalIntroSeen] = useState(false);
+  const [infoModalOpen, setInfoModalOpen] = useState(false);
+  const [resetConfirmOpen, setResetConfirmOpen] = useState(false);
   const [weeklyReflection, setWeeklyReflection] = useState(null);
   const [reflectionLoading, setReflectionLoading] = useState(false);
   const [reflectionError, setReflectionError] = useState(false);
@@ -83,21 +101,11 @@ export default function Journal({ onLogout, onBack, config, user, displayName, o
       const jDay = calcJourneyDay(resolvedIntention.created_at);
       const chNum = getChapterNumber(jDay);
 
-      // Chapter 1 intro on first open
-      if (jDay <= 2) {
-        const key = `bj_chapter_seen_${user.id}_${config.id}_1`;
-        if (!localStorage.getItem(key)) setChapterIntroToShow(1);
+      // Show chapter intro if no entries exist yet in the current chapter
+      if (!hasEntriesInChapter(data, resolvedIntention, chNum)) {
+        setChapterIntroToShow(chNum);
       }
-      // Chapter 2 transition (Day 31+)
-      if (jDay >= 31 && chNum === 2) {
-        const key = `bj_chapter_seen_${user.id}_${config.id}_2`;
-        if (!localStorage.getItem(key)) setChapterIntroToShow(2);
-      }
-      // Chapter 3 transition (Day 61+)
-      if (jDay >= 61 && chNum === 3) {
-        const key = `bj_chapter_seen_${user.id}_${config.id}_3`;
-        if (!localStorage.getItem(key)) setChapterIntroToShow(3);
-      }
+
       // Celebration at Day 90+
       if (jDay >= 90) {
         const celebKey = `bj_celebration_seen_${user.id}_${config.id}`;
@@ -304,13 +312,18 @@ export default function Journal({ onLogout, onBack, config, user, displayName, o
     </div>
   );
 
-  if (intention === false) return (
-    <IntentionSetup
-      config={config}
-      onBack={onBack}
-      onComplete={(data) => setIntention(data)}
-    />
-  );
+  if (intention === false) {
+    if (!journalIntroSeen) return (
+      <JournalIntro config={config} onBack={onBack} onStart={() => setJournalIntroSeen(true)} />
+    );
+    return (
+      <IntentionSetup
+        config={config}
+        onBack={onBack}
+        onComplete={(data) => setIntention(data)}
+      />
+    );
+  }
 
   return (
     <div style={{ minHeight: '100vh' }}>
@@ -319,10 +332,7 @@ export default function Journal({ onLogout, onBack, config, user, displayName, o
       {chapterIntroToShow && (() => {
         const ch = JOURNAL_CHAPTERS[config.id][chapterIntroToShow];
         const chNum = chapterIntroToShow;
-        const dismiss = () => {
-          localStorage.setItem(`bj_chapter_seen_${user.id}_${config.id}_${chNum}`, "1");
-          setChapterIntroToShow(null);
-        };
+        const dismiss = () => setChapterIntroToShow(null);
         return (
           <div style={{
             position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 100,
@@ -368,6 +378,65 @@ export default function Journal({ onLogout, onBack, config, user, displayName, o
               }}>
                 {chNum === 1 ? 'Enter the ritual' : chNum === 2 ? 'Step into the next room' : 'Complete the journey'}
               </button>
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* Info modal — journal + chapter context */}
+      {infoModalOpen && (() => {
+        const chNum = getChapterNumber(journeyDay);
+        const ch = JOURNAL_CHAPTERS[config.id][chNum];
+        return (
+          <div style={{
+            position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 100,
+            background: '#0d0d12',
+            overflowY: 'auto', WebkitOverflowScrolling: 'touch',
+            animation: 'fadeUp .3s ease both',
+          }}>
+            <div style={{ maxWidth: 480, width: '100%', margin: '0 auto', padding: '28px 24px 60px' }}>
+              <button onClick={() => setInfoModalOpen(false)} style={{
+                background: 'none', border: 'none', color: 'rgba(236,232,224,.3)',
+                fontSize: '1rem', cursor: 'pointer', padding: '0 0 28px',
+                fontFamily: "'Cormorant Garamond', Georgia, serif",
+                display: 'flex', alignItems: 'center', gap: 4,
+              }}>
+                ← Back to journal
+              </button>
+
+              {/* This journal */}
+              <div style={{ marginBottom: 44 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20 }}>
+                  <span style={{ fontSize: '1.6rem', color: config.color }}>{config.icon}</span>
+                  <div>
+                    <p style={{ fontSize: '.72rem', letterSpacing: '.14em', textTransform: 'uppercase', color: `rgba(${config.colorRgb},.4)`, margin: '0 0 3px' }}>This journal</p>
+                    <h2 style={{ fontFamily: "'Cormorant Garamond', Georgia, serif", fontSize: '1.4rem', color: config.color, fontWeight: 600, margin: 0 }}>{config.name}</h2>
+                  </div>
+                </div>
+                <JournalIntroContent config={config} />
+              </div>
+
+              {/* Divider */}
+              <div style={{ borderTop: '1px solid rgba(236,232,224,.07)', marginBottom: 40 }} />
+
+              {/* This chapter */}
+              <div>
+                <div style={{ marginBottom: 20 }}>
+                  <p style={{ fontSize: '.72rem', letterSpacing: '.14em', textTransform: 'uppercase', color: `rgba(${config.colorRgb},.4)`, margin: '0 0 3px' }}>This chapter</p>
+                  <h2 style={{ fontFamily: "'Cormorant Garamond', Georgia, serif", fontSize: '1.4rem', color: '#ece8e0', fontWeight: 600, margin: '0 0 4px' }}>{ch.name}</h2>
+                  <p style={{ fontFamily: "'Cormorant Garamond', Georgia, serif", fontStyle: 'italic', fontSize: '.95rem', color: `rgba(${config.colorRgb},.45)`, margin: 0 }}>{ch.days}</p>
+                </div>
+                <p style={{ fontFamily: "'Cormorant Garamond', Georgia, serif", fontSize: '1.1rem', color: 'rgba(236,232,224,.72)', lineHeight: 1.8, margin: '0 0 18px' }}>{ch.opening}</p>
+                <p style={{ fontFamily: "'Cormorant Garamond', Georgia, serif", fontStyle: 'italic', fontSize: '1rem', color: `rgba(${config.colorRgb},.55)`, lineHeight: 1.75, margin: '0 0 24px' }}>{ch.expectation}</p>
+                <ul style={{ padding: 0, margin: 0, listStyle: 'none' }}>
+                  {ch.goals.map((g, i) => (
+                    <li key={i} style={{ display: 'flex', gap: 12, alignItems: 'flex-start', marginBottom: 10 }}>
+                      <span style={{ color: config.color, flexShrink: 0, marginTop: 4, opacity: .6 }}>✦</span>
+                      <span style={{ fontFamily: "'Cormorant Garamond', Georgia, serif", fontSize: '1rem', color: 'rgba(236,232,224,.65)', lineHeight: 1.65 }}>{g}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
             </div>
           </div>
         );
@@ -440,6 +509,21 @@ export default function Journal({ onLogout, onBack, config, user, displayName, o
                 boxShadow: view === t.id ? `0 0 0 1px rgba(${config.colorRgb},.25)` : 'none',
               }}>{t.icon}</button>
             ))}
+            {view === 'entries' && (
+              <button
+                onClick={() => setInfoModalOpen(true)}
+                title="About this journal"
+                style={{
+                  width: 40, height: 40, border: 'none', borderRadius: 10, cursor: 'pointer',
+                  fontSize: '1rem', fontFamily: 'inherit',
+                  background: 'transparent',
+                  color: 'rgba(236,232,224,.22)',
+                  transition: 'all .2s',
+                }}
+                onMouseEnter={e => { e.currentTarget.style.color = `rgba(${config.colorRgb},.6)` }}
+                onMouseLeave={e => { e.currentTarget.style.color = 'rgba(236,232,224,.22)' }}
+              >ⓘ</button>
+            )}
           </div>
 
           {/* Morning / Evening micro-toggle (only in Today) */}
@@ -799,11 +883,80 @@ export default function Journal({ onLogout, onBack, config, user, displayName, o
               </>
             )}
 
-            <div style={{ textAlign: 'center', marginTop: weeklyReflection ? 8 : 40 }}>
-              <button onClick={async () => { if (confirm('Clear all data for this journal? Cannot be undone.')) { await deleteAllEntries(config.id); setEntries({}); setMs(0); setMsNote(""); setWeeklyReflection(null); letterLoadedRef.current = false; } }}
-                style={{ background: 'none', border: '1px solid rgba(201,76,76,.2)', color: 'rgba(201,76,76,.4)', padding: '6px 16px', borderRadius: 8, fontSize: '1rem', cursor: 'pointer', fontFamily: 'inherit' }}>
-                Reset Journal Data
-              </button>
+            <div style={{ marginTop: weeklyReflection ? 8 : 40, paddingTop: 32, borderTop: '1px solid rgba(236,232,224,.06)' }}>
+              {!resetConfirmOpen ? (
+                <button
+                  onClick={() => setResetConfirmOpen(true)}
+                  style={{
+                    background: 'none', border: '1px solid rgba(201,76,76,.18)',
+                    color: 'rgba(201,76,76,.35)', padding: '6px 16px',
+                    borderRadius: 8, fontSize: '.9rem', cursor: 'pointer', fontFamily: 'inherit',
+                    transition: 'all .2s',
+                  }}
+                  onMouseEnter={e => { e.currentTarget.style.borderColor = 'rgba(201,76,76,.35)'; e.currentTarget.style.color = 'rgba(201,76,76,.6)' }}
+                  onMouseLeave={e => { e.currentTarget.style.borderColor = 'rgba(201,76,76,.18)'; e.currentTarget.style.color = 'rgba(201,76,76,.35)' }}
+                >
+                  Restart this journal
+                </button>
+              ) : (
+                <div style={{
+                  background: 'rgba(201,76,76,.05)',
+                  border: '1px solid rgba(201,76,76,.2)',
+                  borderRadius: 14, padding: '18px 20px',
+                  animation: 'fadeUp .2s ease both',
+                }}>
+                  <p style={{ fontFamily: "'Cormorant Garamond', Georgia, serif", fontSize: '1.1rem', color: 'rgba(236,232,224,.7)', margin: '0 0 6px', lineHeight: 1.5 }}>
+                    Restart this journal?
+                  </p>
+                  <p style={{ fontSize: '.88rem', color: 'rgba(236,232,224,.35)', margin: '0 0 18px', lineHeight: 1.5 }}>
+                    All entries, your intention, and your streak will be cleared. You will start fresh with a new intention.
+                  </p>
+                  <div style={{ display: 'flex', gap: 10 }}>
+                    <button
+                      onClick={() => setResetConfirmOpen(false)}
+                      style={{
+                        flex: 1, background: 'none', border: '1px solid rgba(236,232,224,.12)',
+                        color: 'rgba(236,232,224,.45)', padding: '9px 0', borderRadius: 10,
+                        fontSize: '.95rem', cursor: 'pointer', fontFamily: 'inherit',
+                      }}
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      onClick={async () => {
+                        await deleteAllEntries(config.id);
+                        await deleteIntention(config.id);
+                        // Clear all localStorage keys for this journal
+                        [1, 2, 3].forEach(n => localStorage.removeItem(`bj_chapter_seen_${user.id}_${config.id}_${n}`));
+                        [3, 7, 14, 21, 30, 60, 90].forEach(m => localStorage.removeItem(`bj_streak_seen_${user.id}_${config.id}_${m}`));
+                        localStorage.removeItem(`bj_celebration_seen_${user.id}_${config.id}`);
+                        // Reset all state — this will show JournalIntro automatically
+                        setEntries({});
+                        setIntention(false);
+                        setJournalIntroSeen(false);
+                        setMs(0);
+                        setMsNote('');
+                        setWeeklyReflection(null);
+                        letterLoadedRef.current = false;
+                        setChapterIntroToShow(null);
+                        setCelebrationVisible(false);
+                        setStreakBanner(null);
+                        setView('journal');
+                        setResetConfirmOpen(false);
+                      }}
+                      style={{
+                        flex: 1, background: 'rgba(201,76,76,.12)',
+                        border: '1px solid rgba(201,76,76,.3)',
+                        color: 'rgba(201,76,76,.8)', padding: '9px 0', borderRadius: 10,
+                        fontSize: '.95rem', cursor: 'pointer', fontFamily: 'inherit',
+                        fontWeight: 600,
+                      }}
+                    >
+                      Yes, restart
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         )}
