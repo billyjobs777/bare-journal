@@ -325,12 +325,12 @@ export default function Journal({ onLogout, onBack, config, user, displayName, o
         };
         return (
           <div style={{
-            position: 'fixed', inset: 0, zIndex: 100,
+            position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 100,
             background: '#0d0d12',
-            display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'flex-start',
-            padding: '32px 28px', animation: 'fadeUp .6s ease both', overflowY: 'auto',
+            overflowY: 'auto', WebkitOverflowScrolling: 'touch',
+            animation: 'fadeUp .6s ease both',
           }}>
-            <div style={{ maxWidth: 480, width: '100%' }}>
+            <div style={{ maxWidth: 480, width: '100%', margin: '0 auto', padding: '32px 28px' }}>
               <button onClick={onBack} style={{ background: 'none', border: 'none', color: 'rgba(236,232,224,.3)', fontSize: '1rem', cursor: 'pointer', padding: '0 0 24px', fontFamily: "'Cormorant Garamond', Georgia, serif", display: 'flex', alignItems: 'center', gap: 4 }}>
                 ‹ All journals
               </button>
