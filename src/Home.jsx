@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { JOURNALS } from './journalConfigs'
 import { loadAllEntriesForJournals, calcStreakFromEntries } from './db'
 import ProfileMenu from './ProfileMenu'
@@ -190,11 +190,27 @@ function JournalCard({ journal: j, streak, onSelect }) {
   )
 }
 
-const CARD_W = 260
-const CARD_GAP = 20
-const STEP = CARD_W + CARD_GAP
+function getCardSizes(width) {
+  if (width >= 1200) return { cardW: 340, cardH: 380, gap: 28, padding: '36px 32px', iconSize: '2.5rem', titleSize: '1.65rem', taglineSize: '1.15rem', streakSize: '1.15rem', carouselH: 430 }
+  if (width >= 768)  return { cardW: 295, cardH: 340, gap: 24, padding: '32px 28px', iconSize: '2.2rem',  titleSize: '1.45rem', taglineSize: '1.05rem', streakSize: '1.1rem',  carouselH: 385 }
+  return                     { cardW: 260, cardH: 300, gap: 20, padding: '28px 24px', iconSize: '1.8rem',  titleSize: '1.3rem',  taglineSize: '1rem',    streakSize: '1.05rem', carouselH: 340 }
+}
+
+function useWindowWidth() {
+  const [width, setWidth] = useState(() => window.innerWidth)
+  useEffect(() => {
+    const handle = () => setWidth(window.innerWidth)
+    window.addEventListener('resize', handle)
+    return () => window.removeEventListener('resize', handle)
+  }, [])
+  return width
+}
 
 export default function Home({ onSelect, onLogout, user, displayName, onNameUpdate, onOpenHelp, onOpenFAQ }) {
+  const windowWidth = useWindowWidth()
+  const sz = getCardSizes(windowWidth)
+  const STEP = sz.cardW + sz.gap
+
   const allJournals = Object.values(JOURNALS)
   const MID = Math.floor(allJournals.length / 2) // 2 for 5 journals
   const [journals, setJournals] = useState(allJournals)
@@ -249,16 +265,20 @@ export default function Home({ onSelect, onLogout, user, displayName, onNameUpda
       </div>
 
       {/* Greeting */}
-      <div style={{ padding: '64px 28px 36px', maxWidth: 560, margin: '0 auto' }}>
+      <div style={{ padding: '64px 28px 36px', maxWidth: 640, margin: '0 auto' }}>
         <p style={{
-          fontFamily: SERIF, fontSize: '.85rem', letterSpacing: '.14em',
+          fontFamily: SERIF, fontSize: windowWidth >= 1200 ? '1rem' : windowWidth >= 768 ? '.92rem' : '.85rem',
+          letterSpacing: '.14em',
           textTransform: 'uppercase', color: 'rgba(236,232,224,.4)', margin: '0 0 10px',
         }}>
           {greeting.salutation}
         </p>
         <h1 style={{
-          fontFamily: SERIF, fontSize: '2.1rem', fontWeight: 600,
-          color: '#ece8e0', margin: 0, lineHeight: 1.25, maxWidth: 360,
+          fontFamily: SERIF,
+          fontSize: windowWidth >= 1200 ? '2.9rem' : windowWidth >= 768 ? '2.5rem' : '2.1rem',
+          fontWeight: 600,
+          color: '#ece8e0', margin: 0, lineHeight: 1.25,
+          maxWidth: windowWidth >= 1200 ? 520 : windowWidth >= 768 ? 440 : 360,
           animation: 'fadeUp .6s ease both',
         }}>
           {greeting.poetic}
@@ -267,7 +287,7 @@ export default function Home({ onSelect, onLogout, user, displayName, onNameUpda
 
       {/* Carousel */}
       <div
-        style={{ position: 'relative', height: 340, userSelect: 'none' }}
+        style={{ position: 'relative', height: sz.carouselH, userSelect: 'none' }}
         onTouchStart={handleTouchStart}
         onTouchEnd={handleTouchEnd}
       >
@@ -275,9 +295,9 @@ export default function Home({ onSelect, onLogout, user, displayName, onNameUpda
         <div style={{
           position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
           display: 'flex', alignItems: 'center',
-          transform: `translateX(calc(50vw - ${130 + activeIndex * STEP}px))`,
+          transform: `translateX(calc(50vw - ${sz.cardW / 2 + activeIndex * STEP}px))`,
           transition: 'transform .45s cubic-bezier(.4,0,.2,1)',
-          gap: CARD_GAP,
+          gap: sz.gap,
           paddingLeft: 0,
         }}>
           {journals.map((j, i) => {
@@ -289,13 +309,13 @@ export default function Home({ onSelect, onLogout, user, displayName, onNameUpda
                 key={j.id}
                 onClick={() => isActive ? onSelect(j.id) : setActiveIndex(i)}
                 style={{
-                  width: CARD_W,
-                  minHeight: 300,
+                  width: sz.cardW,
+                  minHeight: sz.cardH,
                   flexShrink: 0,
                   background: `radial-gradient(ellipse at 60% 20%, rgba(${j.colorRgb},.18) 0%, rgba(13,13,18,1) 70%)`,
                   border: `1px solid rgba(${j.colorRgb}, ${isActive ? '.35' : '.14'})`,
                   borderRadius: 20,
-                  padding: '28px 24px',
+                  padding: sz.padding,
                   cursor: 'pointer',
                   display: 'flex', flexDirection: 'column', justifyContent: 'space-between',
                   opacity: dist === 0 ? 1 : dist === 1 ? 0.45 : 0.2,
@@ -305,18 +325,18 @@ export default function Home({ onSelect, onLogout, user, displayName, onNameUpda
                 }}
               >
                 <div>
-                  <div style={{ fontSize: '1.8rem', color: j.color, marginBottom: 14 }}>{j.icon}</div>
-                  <h2 style={{ fontFamily: SERIF, fontSize: '1.3rem', fontWeight: 600, color: '#ece8e0', margin: '0 0 8px', lineHeight: 1.2 }}>{j.name}</h2>
-                  <p style={{ fontFamily: SERIF, fontSize: '1rem', fontStyle: 'italic', color: `rgba(${j.colorRgb},.65)`, margin: 0, lineHeight: 1.4 }}>{j.tagline}</p>
+                  <div style={{ fontSize: sz.iconSize, color: j.color, marginBottom: 14 }}>{j.icon}</div>
+                  <h2 style={{ fontFamily: SERIF, fontSize: sz.titleSize, fontWeight: 600, color: '#ece8e0', margin: '0 0 8px', lineHeight: 1.2 }}>{j.name}</h2>
+                  <p style={{ fontFamily: SERIF, fontSize: sz.taglineSize, fontStyle: 'italic', color: `rgba(${j.colorRgb},.65)`, margin: 0, lineHeight: 1.4 }}>{j.tagline}</p>
                 </div>
                 <div style={{ marginTop: 24 }}>
                   {streak > 0 ? (
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                      <span style={{ fontSize: '1rem', color: j.color, ...streakGlow(streak, j.colorRgb) }}>✦</span>
-                      <span style={{ fontFamily: SERIF, fontSize: '1.05rem', color: j.color }}>{streak} day{streak !== 1 ? 's' : ''}</span>
+                      <span style={{ fontSize: sz.streakSize, color: j.color, ...streakGlow(streak, j.colorRgb) }}>✦</span>
+                      <span style={{ fontFamily: SERIF, fontSize: sz.streakSize, color: j.color }}>{streak} day{streak !== 1 ? 's' : ''}</span>
                     </div>
                   ) : (
-                    <span style={{ fontFamily: SERIF, fontStyle: 'italic', fontSize: '.95rem', color: `rgba(${j.colorRgb},.5)` }}>Begin your practice</span>
+                    <span style={{ fontFamily: SERIF, fontStyle: 'italic', fontSize: sz.taglineSize, color: `rgba(${j.colorRgb},.5)` }}>Begin your practice</span>
                   )}
                 </div>
               </div>
@@ -342,10 +362,13 @@ export default function Home({ onSelect, onLogout, user, displayName, onNameUpda
         <button
           onClick={() => onSelect(journals[activeIndex].id)}
           style={{
-            fontFamily: SERIF, fontSize: '1.05rem', fontStyle: 'italic',
+            fontFamily: SERIF,
+            fontSize: windowWidth >= 1200 ? '1.2rem' : windowWidth >= 768 ? '1.12rem' : '1.05rem',
+            fontStyle: 'italic',
             background: 'none', border: `1px solid rgba(${journals[activeIndex].colorRgb},.3)`,
             color: journals[activeIndex].color,
-            padding: '10px 32px', borderRadius: 24, cursor: 'pointer',
+            padding: windowWidth >= 1200 ? '12px 40px' : windowWidth >= 768 ? '11px 36px' : '10px 32px',
+            borderRadius: 24, cursor: 'pointer',
             transition: 'all .3s ease',
             letterSpacing: '.02em',
           }}
@@ -359,7 +382,8 @@ export default function Home({ onSelect, onLogout, user, displayName, onNameUpda
       {/* Practice count */}
       {!loadingStreaks && (
         <p style={{
-          fontFamily: SERIF, fontStyle: 'italic', fontSize: '1rem',
+          fontFamily: SERIF, fontStyle: 'italic',
+          fontSize: windowWidth >= 1200 ? '1.1rem' : '1rem',
           color: 'rgba(236,232,224,.3)', textAlign: 'center',
           marginTop: 28, paddingBottom: 48,
         }}>
