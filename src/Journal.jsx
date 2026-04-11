@@ -1,5 +1,6 @@
-import { useState, useEffect } from 'react'
-import { loadAllEntries, saveEntry, deleteAllEntries, loadIntention } from './db'
+import { useState, useEffect, useRef } from 'react'
+import { loadAllEntries, saveEntry, deleteAllEntries, loadIntention, calcJourneyDay, calcWeekNumber, loadWeeklyReflection, saveWeeklyReflection, generateWeeklyReflection } from './db'
+import { JOURNAL_CHAPTERS, STREAK_MILESTONES, getChapterNumber } from './journalConfigs'
 import IntentionSetup from './IntentionSetup'
 import ProfileMenu from './ProfileMenu'
 
@@ -15,7 +16,6 @@ const dayIndex = (d = new Date()) => {
   return Math.floor((local - epoch) / 86400000);
 };
 const dayIndexForDate = (ds) => dayIndex(new Date(ds + 'T12:00:00'));
-const weekIndex = () => Math.floor(dayIndex() / 7);
 const fmtDate = (ds) => new Date(ds + 'T12:00:00').toLocaleDateString('en', { weekday: 'short', month: 'short', day: 'numeric' });
 
 export default function Journal({ onLogout, onBack, config, user, displayName, onNameUpdate }) {
@@ -32,6 +32,15 @@ export default function Journal({ onLogout, onBack, config, user, displayName, o
   const [msNote, setMsNote] = useState("");
   const [msSaved, setMsSaved] = useState(false);
   const [selectedDate, setSelectedDate] = useState(null);
+  const [carouselIndex, setCarouselIndex] = useState(0); // index into entryDates (0 = most recent)
+  const [showCalendar, setShowCalendar] = useState(false);
+  const [chapterIntroToShow, setChapterIntroToShow] = useState(null); // 1|2|3|null
+  const [celebrationVisible, setCelebrationVisible] = useState(false);
+  const [streakBanner, setStreakBanner] = useState(null);
+  const [weeklyReflection, setWeeklyReflection] = useState(null);
+  const [reflectionLoading, setReflectionLoading] = useState(false);
+  const [reflectionError, setReflectionError] = useState(false);
+  const letterLoadedRef = useRef(false);
 
   const today = dateKey();
   const isMonday = new Date().getDay() === 1;
@@ -41,8 +50,13 @@ export default function Journal({ onLogout, onBack, config, user, displayName, o
   const weeklyPool = intention?.generated_prompts?.weeklyPrompts?.length >= 13
     ? intention.generated_prompts.weeklyPrompts
     : config.weeklyPrompts;
-  const todayLofty = loftyPool[dayIndex() % loftyPool.length];
-  const thisWeekly = weeklyPool[weekIndex() % weeklyPool.length];
+
+  // Journey-relative prompt selection: Day 1 = index 0, Day 90 = index 89
+  const journeyDay = intention?.created_at ? calcJourneyDay(intention.created_at) : 1;
+  const weekNumber = calcWeekNumber(journeyDay);
+  const loftyIndex = Math.min(Math.max(0, journeyDay - 1), loftyPool.length - 1);
+  const todayLofty = loftyPool[loftyIndex];
+  const thisWeekly = weeklyPool[weekNumber % weeklyPool.length];
 
   useEffect(() => {
     setTod(new Date().getHours() < 15 ? "morning" : "evening");
@@ -55,13 +69,61 @@ export default function Journal({ onLogout, onBack, config, user, displayName, o
       loadIntention(config.id),
     ]);
     setEntries(data);
-    setIntention(intentionData || false);
+    const resolvedIntention = intentionData || false;
+    setIntention(resolvedIntention);
     const t = dateKey();
     const todTod = new Date().getHours() < 15 ? "morning" : "evening";
     const sk = todTod === "morning" ? "ms_am" : "ms_pm";
     const nk = todTod === "morning" ? "msn_am" : "msn_pm";
     if (data[t]?.[sk]) setMs(data[t][sk]);
     if (data[t]?.[nk]) setMsNote(data[t][nk]);
+
+    // Chapter intro and celebration logic
+    if (resolvedIntention && resolvedIntention.created_at) {
+      const jDay = calcJourneyDay(resolvedIntention.created_at);
+      const chNum = getChapterNumber(jDay);
+
+      // Chapter 1 intro on first open
+      if (jDay <= 2) {
+        const key = `bj_chapter_seen_${user.id}_${config.id}_1`;
+        if (!localStorage.getItem(key)) setChapterIntroToShow(1);
+      }
+      // Chapter 2 transition (Day 31+)
+      if (jDay >= 31 && chNum === 2) {
+        const key = `bj_chapter_seen_${user.id}_${config.id}_2`;
+        if (!localStorage.getItem(key)) setChapterIntroToShow(2);
+      }
+      // Chapter 3 transition (Day 61+)
+      if (jDay >= 61 && chNum === 3) {
+        const key = `bj_chapter_seen_${user.id}_${config.id}_3`;
+        if (!localStorage.getItem(key)) setChapterIntroToShow(3);
+      }
+      // Celebration at Day 90+
+      if (jDay >= 90) {
+        const celebKey = `bj_celebration_seen_${user.id}_${config.id}`;
+        if (!localStorage.getItem(celebKey)) setCelebrationVisible(true);
+      }
+    }
+
+    // Streak milestone check (compute directly from data, not from state)
+    const fmt = (d) => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+    const has = (k) => data[k]?.ms_am || data[k]?.ms_pm;
+    let d = new Date(), currentStreak = 0;
+    if (has(fmt(d))) { currentStreak = 1; d.setDate(d.getDate() - 1); }
+    else d.setDate(d.getDate() - 1);
+    while (has(fmt(d))) { currentStreak++; d.setDate(d.getDate() - 1); }
+
+    for (const m of [90, 60, 30, 21, 14, 7, 3]) {
+      if (currentStreak >= m) {
+        const key = `bj_streak_seen_${user.id}_${config.id}_${m}`;
+        if (!localStorage.getItem(key)) {
+          const found = STREAK_MILESTONES.find(s => s.days === m);
+          if (found) setStreakBanner(found.message);
+        }
+        break;
+      }
+    }
+
     setLoading(false);
   };
 
@@ -73,7 +135,65 @@ export default function Journal({ onLogout, onBack, config, user, displayName, o
       setMsNote(entries[today]?.[nk] || "");
       setActivePromptIndex(0);
     }
+    if (view === "entries") {
+      setCarouselIndex(0);
+      setSelectedDate(null);
+      setShowCalendar(false);
+    }
+    if (view === "trends" && !letterLoadedRef.current && intention && intention !== false) {
+      letterLoadedRef.current = true;
+      loadWeeklyLetter();
+    }
   }, [tod, entries, today, view]);
+
+  const loadWeeklyLetter = async () => {
+    if (reflectionLoading) return;
+    setReflectionLoading(true);
+    setReflectionError(false);
+
+    // 1. Check DB for existing reflection this week
+    const existing = await loadWeeklyReflection(config.id, weekNumber);
+    if (existing) {
+      setWeeklyReflection(existing);
+      setReflectionLoading(false);
+      return;
+    }
+
+    // 2. Build weekEntries from entries state
+    const startOfJourney = new Date(intention.created_at);
+    const startLocal = new Date(startOfJourney.getFullYear(), startOfJourney.getMonth(), startOfJourney.getDate());
+    const weekStartJD = weekNumber * 7 + 1;
+    const weekEndJD = weekNumber * 7 + 7;
+    const weekEntries = [];
+    for (let jd = weekStartJD; jd <= weekEndJD; jd++) {
+      const d = new Date(startLocal.getTime() + (jd - 1) * 86400000);
+      const dk = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+      weekEntries.push({ date: dk, ...(entries[dk] || {}) });
+    }
+
+    // 3. Only generate if there's at least 1 entry with a score
+    const hasAnyData = weekEntries.some(e => e.ms_am || e.ms_pm);
+    if (!hasAnyData) {
+      setReflectionLoading(false);
+      return;
+    }
+
+    // 4. Call AI (max once per week — DB caches the result)
+    const result = await generateWeeklyReflection(
+      config.id, intention.intention, journeyDay, weekEntries, thisWeekly
+    );
+
+    if (!result) {
+      setReflectionError(true);
+      setReflectionLoading(false);
+      return;
+    }
+
+    // 5. Save to DB so future opens skip the AI call
+    await saveWeeklyReflection(config.id, weekNumber, result.reflection_text, result.entries_count);
+    setWeeklyReflection({ reflection_text: result.reflection_text, entries_count: result.entries_count });
+    setReflectionLoading(false);
+  };
 
   const saveField = async (field, value) => {
     const newData = { ...entries[today], [field]: value };
@@ -97,32 +217,6 @@ export default function Journal({ onLogout, onBack, config, user, displayName, o
     setTimeout(() => setMsSaved(false), 1500);
   };
 
-  const calcStreak = () => {
-    let current = 0, d = new Date();
-    const has = (k) => entries[k]?.ms_am || entries[k]?.ms_pm;
-    if (has(dateKey(d))) current = 1;
-    d.setDate(d.getDate() - 1);
-    while (has(dateKey(d))) { current++; d.setDate(d.getDate() - 1); }
-    if (current === 0) { d = new Date(); d.setDate(d.getDate() - 1); while (has(dateKey(d))) { current++; d.setDate(d.getDate() - 1); } }
-    let longest = 0, s = 0;
-    for (const k of Object.keys(entries).sort()) { if (has(k)) { s++; if (s > longest) longest = s; } else s = 0; }
-    return { current, longest: Math.max(longest, current) };
-  };
-
-  const getScoreHistory = () => {
-    const out = [];
-    for (const k of Object.keys(entries).sort()) {
-      const e = entries[k];
-      const score = e?.ms_pm || e?.ms_am;
-      if (score) out.push({
-        date: k, score,
-        am: e?.ms_am || 0, pm: e?.ms_pm || 0,
-        label: new Date(k + 'T12:00:00').toLocaleDateString('en', { month: 'short', day: 'numeric' }),
-        amNote: e?.msn_am || "", pmNote: e?.msn_pm || "",
-      });
-    }
-    return out;
-  };
 
   const getCalendarDays = () => {
     const now = new Date();
@@ -145,12 +239,6 @@ export default function Journal({ onLogout, onBack, config, user, displayName, o
     return Object.values(e).some(v => v && (typeof v === 'number' || v?.trim?.()));
   }).sort().reverse();
 
-  const streak = calcStreak();
-  const history = getScoreHistory();
-  const avgScore = history.length ? (history.reduce((a, h) => a + h.score, 0) / history.length).toFixed(1) : "—";
-  const r7 = history.length >= 7 ? (history.slice(-7).reduce((a, h) => a + h.score, 0) / 7) : null;
-  const o7 = history.length >= 14 ? (history.slice(-14, -7).reduce((a, h) => a + h.score, 0) / 7) : null;
-  const trend = r7 != null && o7 != null ? (r7 - o7).toFixed(1) : null;
 
   const scoreKey = tod === "morning" ? "ms_am" : "ms_pm";
   const noteKey  = tod === "morning" ? "msn_am" : "msn_pm";
@@ -164,7 +252,11 @@ export default function Journal({ onLogout, onBack, config, user, displayName, o
 
   const DayEntry = ({ dk }) => {
     const e = entries[dk]; if (!e) return null;
-    const loftyQ = loftyPool[dayIndexForDate(dk) % loftyPool.length];
+    // Journey-relative lofty question for this past day
+    const entryJourneyDay = intention?.created_at
+      ? Math.max(1, Math.floor((new Date(dk + 'T12:00:00') - new Date(new Date(intention.created_at).toDateString())) / 86400000) + 1)
+      : dayIndexForDate(dk) + 1;
+    const loftyQ = loftyPool[Math.min(entryJourneyDay - 1, loftyPool.length - 1)];
     const journalFields = Object.keys(e).filter(f => !['ms_am','ms_pm','msn_am','msn_pm'].includes(f) && e[f]?.trim?.());
     const isToday = dk === today;
     return (
@@ -205,27 +297,6 @@ export default function Journal({ onLogout, onBack, config, user, displayName, o
     );
   };
 
-  const Sparkline = ({ data }) => {
-    if (data.length < 2) return null;
-    const width = 300, height = 80, pad = 8;
-    const w = width - pad * 2, h = height - pad * 2;
-    const pts = data.map((d, i) => ({ x: pad + (i / (data.length - 1)) * w, y: pad + h - ((d.score - 1) / 9) * h }));
-    const path = pts.map((p, i) => `${i === 0 ? 'M' : 'L'}${p.x},${p.y}`).join(' ');
-    const area = path + ` L${pts.at(-1).x},${height} L${pts[0].x},${height} Z`;
-    return (
-      <svg width={width} height={height} viewBox={`0 0 ${width} ${height}`} style={{ width: '100%', height: 'auto' }}>
-        <defs>
-          <linearGradient id="sg" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor={config.color} stopOpacity=".2" />
-            <stop offset="100%" stopColor={config.color} stopOpacity="0" />
-          </linearGradient>
-        </defs>
-        <path d={area} fill="url(#sg)" />
-        <path d={path} fill="none" stroke={config.color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-        {pts.map((p, i) => <circle key={i} cx={p.x} cy={p.y} r="3" fill={config.scoreColors[data[i].score]} stroke="#000" strokeWidth="1.5" />)}
-      </svg>
-    );
-  };
 
   if (loading) return (
     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh', color: config.color, fontFamily: "'Cormorant Garamond', Georgia, serif", fontSize: '1.2rem', fontStyle: 'italic' }}>
@@ -243,6 +314,92 @@ export default function Journal({ onLogout, onBack, config, user, displayName, o
 
   return (
     <div style={{ minHeight: '100vh' }}>
+
+      {/* Chapter intro modal — full-screen overlay */}
+      {chapterIntroToShow && (() => {
+        const ch = JOURNAL_CHAPTERS[config.id][chapterIntroToShow];
+        const chNum = chapterIntroToShow;
+        const dismiss = () => {
+          localStorage.setItem(`bj_chapter_seen_${user.id}_${config.id}_${chNum}`, "1");
+          setChapterIntroToShow(null);
+        };
+        return (
+          <div style={{
+            position: 'fixed', inset: 0, zIndex: 100,
+            background: '#0d0d12',
+            display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+            padding: '32px 28px', animation: 'fadeUp .6s ease both', overflowY: 'auto',
+          }}>
+            <div style={{ maxWidth: 480, width: '100%' }}>
+              <p style={{ fontSize: '.78rem', letterSpacing: '.16em', textTransform: 'uppercase', color: `rgba(${config.colorRgb},.5)`, marginBottom: 14, fontFamily: "'Cormorant Garamond', Georgia, serif" }}>
+                Chapter {chNum} of 3
+              </p>
+              <h1 style={{ fontFamily: "'Cormorant Garamond', Georgia, serif", fontSize: '3rem', color: config.color, fontWeight: 600, margin: '0 0 6px', lineHeight: 1.1 }}>
+                {ch.name}
+              </h1>
+              <p style={{ fontFamily: "'Cormorant Garamond', Georgia, serif", fontSize: '1.1rem', fontStyle: 'italic', color: `rgba(${config.colorRgb},.45)`, margin: '0 0 36px' }}>
+                {ch.days}
+              </p>
+              <p style={{ fontFamily: "'Cormorant Garamond', Georgia, serif", fontSize: '1.25rem', color: '#ece8e0', lineHeight: 1.8, margin: '0 0 24px' }}>
+                {ch.opening}
+              </p>
+              <p style={{ fontFamily: "'Cormorant Garamond', Georgia, serif", fontSize: '1.05rem', color: 'rgba(236,232,224,.5)', lineHeight: 1.75, margin: '0 0 32px', fontStyle: 'italic' }}>
+                {ch.expectation}
+              </p>
+              <p style={{ fontSize: '.78rem', letterSpacing: '.14em', textTransform: 'uppercase', color: `rgba(${config.colorRgb},.4)`, margin: '0 0 14px' }}>
+                This chapter is yours to explore
+              </p>
+              <ul style={{ padding: 0, margin: '0 0 44px', listStyle: 'none' }}>
+                {ch.goals.map((g, i) => (
+                  <li key={i} style={{ display: 'flex', gap: 14, marginBottom: 12, alignItems: 'flex-start' }}>
+                    <span style={{ color: config.color, flexShrink: 0, marginTop: 4, opacity: .7 }}>✦</span>
+                    <span style={{ fontFamily: "'Cormorant Garamond', Georgia, serif", fontSize: '1.05rem', color: 'rgba(236,232,224,.7)', lineHeight: 1.65 }}>{g}</span>
+                  </li>
+                ))}
+              </ul>
+              <button onClick={dismiss} style={{
+                width: '100%', background: config.color, border: 'none', borderRadius: 14,
+                padding: '16px 0', fontSize: '1rem', fontWeight: 700, color: '#000',
+                cursor: 'pointer', fontFamily: "'Cormorant Garamond', Georgia, serif",
+                letterSpacing: '.06em', fontSize: '1.1rem',
+              }}>
+                {chNum === 1 ? 'Enter the ritual' : chNum === 2 ? 'Step into the next room' : 'Complete the journey'}
+              </button>
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* Day 90 celebration overlay */}
+      {celebrationVisible && (
+        <div style={{
+          position: 'fixed', inset: 0, zIndex: 100, background: '#0d0d12',
+          display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+          padding: '32px 28px', animation: 'fadeUp .6s ease both',
+        }}>
+          <div style={{ maxWidth: 480, width: '100%', textAlign: 'center' }}>
+            <div style={{ fontSize: '3rem', color: config.color, marginBottom: 28, filter: `drop-shadow(0 0 24px rgba(${config.colorRgb},.7))` }}>✦</div>
+            <h1 style={{ fontFamily: "'Cormorant Garamond', Georgia, serif", fontSize: '2.8rem', color: config.color, fontWeight: 600, margin: '0 0 20px', lineHeight: 1.1 }}>
+              Ninety Days.
+            </h1>
+            <p style={{ fontFamily: "'Cormorant Garamond', Georgia, serif", fontSize: '1.3rem', fontStyle: 'italic', color: 'rgba(236,232,224,.7)', margin: '0 0 24px', lineHeight: 1.75 }}>
+              You showed up. Day after day, you came back to these pages. That is not a small thing.
+            </p>
+            <p style={{ fontSize: '1rem', color: 'rgba(236,232,224,.4)', lineHeight: 1.75, margin: '0 0 48px', fontStyle: 'italic' }}>
+              The practice doesn't end here — it becomes part of you. Keep writing. Keep showing up.
+            </p>
+            <button onClick={() => {
+              localStorage.setItem(`bj_celebration_seen_${user.id}_${config.id}`, "1");
+              setCelebrationVisible(false);
+            }} style={{
+              background: config.color, border: 'none', borderRadius: 14, padding: '14px 40px',
+              fontSize: '1rem', fontWeight: 700, color: '#000', cursor: 'pointer', fontFamily: 'inherit',
+            }}>
+              Continue the practice ›
+            </button>
+          </div>
+        </div>
+      )}
       {/* Header */}
       <div style={{ padding: '20px 20px 0', maxWidth: 520, margin: '0 auto' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
@@ -251,21 +408,13 @@ export default function Journal({ onLogout, onBack, config, user, displayName, o
               ‹ All journals
             </button>
             <h1 style={{ fontFamily: "'Cormorant Garamond', Georgia, serif", fontSize: '1.5rem', color: config.color, letterSpacing: '.02em', fontWeight: 600, margin: 0 }}>{config.name}</h1>
-            <p style={{ fontSize: '.9rem', color: 'rgba(236,232,224,.35)', margin: '3px 0 0' }}>Day {Math.max(1, Object.keys(entries).length)} of 90</p>
+            <p style={{ fontSize: '.9rem', color: 'rgba(236,232,224,.35)', margin: '3px 0 0' }}>
+              {intention?.created_at
+                ? `Chapter ${getChapterNumber(journeyDay)}: ${JOURNAL_CHAPTERS[config.id][getChapterNumber(journeyDay)].name} · Day ${journeyDay}`
+                : `Day ${Math.max(1, Object.keys(entries).length)} of 90`}
+            </p>
           </div>
           <div style={{ display: 'flex', gap: 14, alignItems: 'center' }}>
-            {streak.current > 0 && (
-              <div style={{ textAlign: 'right' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 6, justifyContent: 'flex-end' }}>
-                  <span style={{
-                    fontSize: '.95rem', color: config.color,
-                    filter: `drop-shadow(0 0 ${Math.min(14, 4 + streak.current * 0.7)}px rgba(${config.colorRgb},${Math.min(1, 0.5 + streak.current * 0.04)}))`,
-                  }}>✦</span>
-                  <span style={{ fontFamily: "'Cormorant Garamond', Georgia, serif", fontSize: '1.6rem', color: config.color, fontWeight: 700, lineHeight: 1 }}>{streak.current}</span>
-                </div>
-                <div style={{ fontSize: '.75rem', color: 'rgba(236,232,224,.35)', textTransform: 'uppercase', letterSpacing: '.08em', textAlign: 'right' }}>streak</div>
-              </div>
-            )}
             <ProfileMenu user={user} displayName={displayName} onNameUpdate={onNameUpdate} onLogout={onLogout} accentColor={config.color} accentRgb={config.colorRgb} />
           </div>
         </div>
@@ -276,8 +425,8 @@ export default function Journal({ onLogout, onBack, config, user, displayName, o
           <div style={{ display: 'flex', gap: 6 }}>
             {[
               { id: 'journal', icon: '✎', title: 'Today' },
-              { id: 'entries', icon: '☰', title: 'Entries' },
-              { id: 'trends', icon: '◫', title: 'Trends' },
+              { id: 'entries', icon: '◎', title: 'Pages' },
+              { id: 'trends', icon: '◈', title: 'Weekly Letter' },
             ].map(t => (
               <button key={t.id} onClick={() => setView(t.id)} title={t.title} style={{
                 width: 40, height: 40, border: 'none', borderRadius: 10, cursor: 'pointer',
@@ -315,253 +464,345 @@ export default function Journal({ onLogout, onBack, config, user, displayName, o
         {/* Today view */}
         {view === 'journal' && (
           <>
-            {/* Prompt card navigator */}
-            <div style={{ marginBottom: 20 }}>
-              {/* Progress dots */}
-              <div style={{ display: 'flex', gap: 6, justifyContent: 'center', marginBottom: 20 }}>
-                {prompts.map((p, i) => (
-                  <button key={i} onClick={() => setActivePromptIndex(i)} style={{
-                    width: i === activePromptIndex ? 22 : 6,
-                    height: 6, borderRadius: 3, border: 'none', cursor: 'pointer',
-                    background: i === activePromptIndex ? config.color : `rgba(${config.colorRgb},.25)`,
-                    transition: 'all .35s ease', padding: 0,
-                  }} />
-                ))}
+            {/* Streak milestone banner */}
+            {streakBanner && (
+              <div
+                onClick={() => {
+                  const m = STREAK_MILESTONES.find(s => s.message === streakBanner);
+                  if (m) localStorage.setItem(`bj_streak_seen_${user.id}_${config.id}_${m.days}`, "1");
+                  setStreakBanner(null);
+                }}
+                style={{
+                  marginBottom: 16,
+                  background: `rgba(${config.colorRgb},.06)`,
+                  border: `1px solid rgba(${config.colorRgb},.2)`,
+                  borderRadius: 14, padding: '16px 20px',
+                  cursor: 'pointer', animation: 'fadeUp .4s ease both',
+                }}
+              >
+                <p style={{
+                  fontFamily: "'Cormorant Garamond', Georgia, serif",
+                  fontSize: '1.15rem', fontStyle: 'italic',
+                  color: config.color, margin: 0, lineHeight: 1.6,
+                }}>
+                  {streakBanner}
+                </p>
+                <p style={{ fontSize: '.8rem', color: `rgba(${config.colorRgb},.4)`, margin: '6px 0 0' }}>Tap to continue</p>
               </div>
+            )}
 
-              {/* Active card */}
-              {prompts.map((p, idx) => {
-                if (idx !== activePromptIndex) return null;
-                const existing = entries[today]?.[p.id] || '';
-                const draft = drafts[p.id] ?? existing;
-                return (
-                  <div key={p.id} style={{
-                    background: `radial-gradient(ellipse at 50% 0%, rgba(${config.colorRgb},.08) 0%, rgba(13,13,18,0) 65%)`,
-                    border: `1px solid rgba(${config.colorRgb},.2)`,
-                    borderRadius: 20,
-                    padding: '32px 24px 24px',
-                    minHeight: 280,
-                    animation: 'fadeUp .5s ease both',
-                  }}>
-                    {/* Label */}
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 18 }}>
-                      <span style={{ fontSize: '.78rem', letterSpacing: '.14em', textTransform: 'uppercase', color: p.color, opacity: .75 }}>{p.label}</span>
-                      {p.weekly && <span style={{ fontSize: '.75rem', background: 'rgba(201,76,110,.15)', color: '#c94c6e', padding: '2px 8px', borderRadius: 10 }}>WEEKLY</span>}
-                      {saved[p.id] && <span style={{ fontSize: '.85rem', color: '#4cc97a', marginLeft: 'auto' }}>✓ saved</span>}
-                    </div>
+            {/* Prompt card navigator — Pulse is the final slide */}
+            {(() => {
+              const allPrompts = [...prompts, { id: '__pulse__', isPulse: true }];
+              const lastIdx = allPrompts.length - 1;
+              return (
+                <div style={{ marginBottom: 20 }}>
+                  {/* Progress dots */}
+                  <div style={{ display: 'flex', gap: 6, justifyContent: 'center', marginBottom: 20 }}>
+                    {allPrompts.map((p, i) => (
+                      <button key={i} onClick={() => setActivePromptIndex(i)} style={{
+                        width: i === activePromptIndex ? 22 : 6,
+                        height: 6, borderRadius: 3, border: 'none', cursor: 'pointer',
+                        background: i === activePromptIndex ? config.color : `rgba(${config.colorRgb},.25)`,
+                        transition: 'all .35s ease', padding: 0,
+                      }} />
+                    ))}
+                  </div>
 
-                    {/* Prompt question */}
-                    <p style={{
-                      fontFamily: "'Cormorant Garamond', Georgia, serif",
-                      fontSize: p.isQuestion ? '1.55rem' : '1.4rem',
-                      fontWeight: p.isQuestion ? 600 : 400,
-                      fontStyle: p.isQuestion ? 'italic' : 'normal',
-                      color: p.isQuestion ? p.color : '#ece8e0',
-                      lineHeight: 1.45,
-                      margin: '0 0 16px',
-                      whiteSpace: 'pre-line',
-                    }}>{p.q}</p>
+                  {/* Active card */}
+                  {allPrompts.map((p, idx) => {
+                    if (idx !== activePromptIndex) return null;
 
-                    {p.hint && <p style={{ fontSize: '.9rem', color: p.color, opacity: .55, marginBottom: 16, fontStyle: 'italic' }}>{p.hint}</p>}
-
-                    {!p.isQuestion && (
-                      <>
-                        <textarea
-                          value={draft}
-                          onChange={e => setDrafts(d => ({ ...d, [p.id]: e.target.value }))}
-                          placeholder="Write here..."
-                          rows={p.rows || 3}
-                          style={{ width: '100%', background: 'rgba(13,13,18,.7)', border: `1px solid rgba(${config.colorRgb},.15)`, borderRadius: 12, padding: '14px 16px', color: '#ece8e0', fontSize: '1rem', fontFamily: 'inherit', resize: 'vertical', lineHeight: 1.7, outline: 'none', transition: 'border-color .2s ease' }}
+                    // — Pulse card (last slide) —
+                    if (p.isPulse) return (
+                      <div key="__pulse__" style={{
+                        background: `radial-gradient(ellipse at 50% 0%, rgba(${config.colorRgb},.07) 0%, rgba(13,13,18,0) 65%)`,
+                        border: `1px solid rgba(${config.colorRgb},.2)`,
+                        borderRadius: 20, padding: '32px 24px 24px',
+                        minHeight: 280, animation: 'fadeUp .5s ease both',
+                      }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 18 }}>
+                          <span style={{ fontSize: '.78rem', letterSpacing: '.14em', textTransform: 'uppercase', color: config.color, opacity: .75 }}>
+                            {tod === 'morning' ? '☀' : '☽'} Pulse
+                          </span>
+                          {msSaved && <span style={{ fontSize: '.85rem', color: '#4cc97a', marginLeft: 'auto' }}>✓ saved</span>}
+                        </div>
+                        <p style={{ fontFamily: "'Cormorant Garamond', Georgia, serif", fontSize: '1.35rem', color: 'rgba(236,232,224,.85)', fontStyle: 'italic', marginBottom: 22, lineHeight: 1.45 }}>
+                          {tod === 'morning' ? config.scoreMorningQ : config.scoreEveningQ}
+                        </p>
+                        <div style={{ display: 'flex', gap: 5, marginBottom: 8, justifyContent: 'center', flexWrap: 'wrap' }}>
+                          {[1,2,3,4,5,6,7,8,9,10].map(n => (
+                            <button key={n} onClick={() => setMs(n)} style={{
+                              width: 36, height: 36, borderRadius: 8, border: 'none', cursor: 'pointer',
+                              fontSize: '1rem', fontWeight: 700, fontFamily: 'inherit',
+                              background: ms === n ? config.scoreColors[n] : 'rgba(255,255,255,.07)',
+                              color: ms === n ? '#000' : 'rgba(236,232,224,.5)',
+                              transform: ms === n ? 'scale(1.12)' : 'scale(1)', transition: 'all .15s',
+                            }}>{n}</button>
+                          ))}
+                        </div>
+                        {ms > 0 && <p style={{ textAlign: 'center', fontSize: '1rem', color: config.scoreColors[ms], margin: '8px 0 12px', fontStyle: 'italic', fontFamily: "'Cormorant Garamond', Georgia, serif" }}>{config.scoreLabels[ms]}</p>}
+                        <textarea value={msNote} onChange={e => setMsNote(e.target.value)} placeholder="A word or two about this…" rows={1}
+                          style={{ width: '100%', background: 'rgba(13,13,18,.7)', border: `1px solid rgba(${config.colorRgb},.15)`, borderRadius: 12, padding: '12px 16px', color: '#ece8e0', fontSize: '1rem', fontFamily: 'inherit', resize: 'none', lineHeight: 1.5, outline: 'none', transition: 'border-color .2s ease' }}
                           onFocus={e => e.target.style.borderColor = `rgba(${config.colorRgb},.45)`}
                           onBlur={e => e.target.style.borderColor = `rgba(${config.colorRgb},.15)`}
                         />
-                        <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 12 }}>
-                          {draft && draft !== existing && (
-                            <button onClick={() => { saveField(p.id, draft); setActivePromptIndex(i => Math.min(prompts.length - 1, i + 1)); }} style={{ background: `rgba(${config.colorRgb},.12)`, border: `1px solid rgba(${config.colorRgb},.3)`, color: config.color, padding: '8px 22px', borderRadius: 10, fontSize: '1rem', cursor: 'pointer', fontFamily: 'inherit', transition: 'background .2s' }}>Save →</button>
-                          )}
+                        {ms > 0 && (ms !== existingScore || msNote !== (entries[today]?.[noteKey] || "")) && (
+                          <button onClick={saveMindset} style={{ marginTop: 10, background: `rgba(${config.colorRgb},.14)`, border: `1px solid rgba(${config.colorRgb},.35)`, color: config.color, padding: '6px 18px', borderRadius: 8, fontSize: '1rem', cursor: 'pointer', fontFamily: 'inherit' }}>Save</button>
+                        )}
+                        {tod === 'evening' && todayShift !== null && (
+                          <div style={{ marginTop: 12, textAlign: 'center', fontSize: '.9rem', color: `rgba(${config.colorRgb},.5)`, fontFamily: "'Cormorant Garamond', Georgia, serif", fontStyle: 'italic' }}>
+                            {entries[today]?.ms_am} {todayShift >= 0 ? '↑' : '↓'} {entries[today]?.ms_pm} — {todayShift >= 0 ? 'lifted' : 'softened'} through the day
+                          </div>
+                        )}
+                      </div>
+                    );
+
+                    // — Regular prompt card —
+                    const existing = entries[today]?.[p.id] || '';
+                    const draft = drafts[p.id] ?? existing;
+                    return (
+                      <div key={p.id} style={{
+                        background: `radial-gradient(ellipse at 50% 0%, rgba(${config.colorRgb},.08) 0%, rgba(13,13,18,0) 65%)`,
+                        border: `1px solid rgba(${config.colorRgb},.2)`,
+                        borderRadius: 20, padding: '32px 24px 24px',
+                        minHeight: 280, animation: 'fadeUp .5s ease both',
+                      }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 18 }}>
+                          <span style={{ fontSize: '.78rem', letterSpacing: '.14em', textTransform: 'uppercase', color: p.color, opacity: .75 }}>{p.label}</span>
+                          {p.weekly && <span style={{ fontSize: '.75rem', background: 'rgba(201,76,110,.15)', color: '#c94c6e', padding: '2px 8px', borderRadius: 10 }}>WEEKLY</span>}
+                          {saved[p.id] && <span style={{ fontSize: '.85rem', color: '#4cc97a', marginLeft: 'auto' }}>✓ saved</span>}
                         </div>
-                      </>
-                    )}
+                        <p style={{
+                          fontFamily: "'Cormorant Garamond', Georgia, serif",
+                          fontSize: p.isQuestion ? '1.55rem' : '1.4rem',
+                          fontWeight: p.isQuestion ? 600 : 400,
+                          fontStyle: p.isQuestion ? 'italic' : 'normal',
+                          color: p.isQuestion ? p.color : '#ece8e0',
+                          lineHeight: 1.45, margin: '0 0 16px', whiteSpace: 'pre-line',
+                        }}>{p.q}</p>
+                        {p.hint && <p style={{ fontSize: '.9rem', color: p.color, opacity: .55, marginBottom: 16, fontStyle: 'italic' }}>{p.hint}</p>}
+                        {!p.isQuestion && (
+                          <>
+                            <textarea
+                              value={draft}
+                              onChange={e => setDrafts(d => ({ ...d, [p.id]: e.target.value }))}
+                              placeholder="Write here..."
+                              rows={p.rows || 3}
+                              style={{ width: '100%', background: 'rgba(13,13,18,.7)', border: `1px solid rgba(${config.colorRgb},.15)`, borderRadius: 12, padding: '14px 16px', color: '#ece8e0', fontSize: '1rem', fontFamily: 'inherit', resize: 'vertical', lineHeight: 1.7, outline: 'none', transition: 'border-color .2s ease' }}
+                              onFocus={e => e.target.style.borderColor = `rgba(${config.colorRgb},.45)`}
+                              onBlur={e => e.target.style.borderColor = `rgba(${config.colorRgb},.15)`}
+                            />
+                            <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 12 }}>
+                              {draft && draft !== existing && (
+                                <button onClick={() => { saveField(p.id, draft); setActivePromptIndex(i => Math.min(lastIdx, i + 1)); }} style={{ background: `rgba(${config.colorRgb},.12)`, border: `1px solid rgba(${config.colorRgb},.3)`, color: config.color, padding: '8px 22px', borderRadius: 10, fontSize: '1rem', cursor: 'pointer', fontFamily: 'inherit', transition: 'background .2s' }}>Save →</button>
+                              )}
+                            </div>
+                          </>
+                        )}
+                      </div>
+                    );
+                  })}
+
+                  {/* Prev / Next */}
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 16 }}>
+                    <button
+                      onClick={() => setActivePromptIndex(i => Math.max(0, i - 1))}
+                      disabled={activePromptIndex === 0}
+                      style={{ background: 'none', border: `1px solid rgba(${config.colorRgb},.2)`, color: activePromptIndex === 0 ? `rgba(${config.colorRgb},.2)` : config.color, padding: '8px 20px', borderRadius: 10, fontSize: '1rem', cursor: activePromptIndex === 0 ? 'default' : 'pointer', fontFamily: 'inherit', transition: 'all .2s' }}
+                    >‹ Prev</button>
+                    <button
+                      onClick={() => setActivePromptIndex(i => Math.min(lastIdx, i + 1))}
+                      disabled={activePromptIndex === lastIdx}
+                      style={{ background: 'none', border: `1px solid rgba(${config.colorRgb},.2)`, color: activePromptIndex === lastIdx ? `rgba(${config.colorRgb},.2)` : config.color, padding: '8px 20px', borderRadius: 10, fontSize: '1rem', cursor: activePromptIndex === lastIdx ? 'default' : 'pointer', fontFamily: 'inherit', transition: 'all .2s' }}
+                    >Next ›</button>
                   </div>
-                );
-              })}
-
-              {/* Prev / Next */}
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 16 }}>
-                <button
-                  onClick={() => setActivePromptIndex(i => Math.max(0, i - 1))}
-                  disabled={activePromptIndex === 0}
-                  style={{ background: 'none', border: `1px solid rgba(${config.colorRgb},.2)`, color: activePromptIndex === 0 ? `rgba(${config.colorRgb},.2)` : config.color, padding: '8px 20px', borderRadius: 10, fontSize: '1rem', cursor: activePromptIndex === 0 ? 'default' : 'pointer', fontFamily: 'inherit', transition: 'all .2s' }}
-                >‹ Prev</button>
-                <button
-                  onClick={() => setActivePromptIndex(i => Math.min(prompts.length - 1, i + 1))}
-                  disabled={activePromptIndex === prompts.length - 1}
-                  style={{ background: 'none', border: `1px solid rgba(${config.colorRgb},.2)`, color: activePromptIndex === prompts.length - 1 ? `rgba(${config.colorRgb},.2)` : config.color, padding: '8px 20px', borderRadius: 10, fontSize: '1rem', cursor: activePromptIndex === prompts.length - 1 ? 'default' : 'pointer', fontFamily: 'inherit', transition: 'all .2s' }}
-                >Next ›</button>
-              </div>
-            </div>
-
-            {/* Mindset check-in */}
-            <div style={{ marginBottom: 14, background: `radial-gradient(ellipse at 50% 0%, rgba(${config.colorRgb},.07) 0%, rgba(13,13,18,0) 65%)`, border: `1px solid rgba(${config.colorRgb},.2)`, borderRadius: 20, padding: '28px 24px', animation: `fadeUp .55s ease both` }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
-                <span style={{ fontSize: '.78rem', letterSpacing: '.14em', textTransform: 'uppercase', color: config.color, opacity: .75 }}>{tod === 'morning' ? '☀' : '☽'} Check-In</span>
-                {msSaved && <span style={{ fontSize: '.85rem', color: '#4cc97a', marginLeft: 'auto' }}>✓ saved</span>}
-              </div>
-              <p style={{ fontFamily: "'Cormorant Garamond', Georgia, serif", fontSize: '1.35rem', color: 'rgba(236,232,224,.85)', fontStyle: 'italic', marginBottom: 18, lineHeight: 1.4 }}>
-                {tod === 'morning' ? config.scoreMorningQ : config.scoreEveningQ}
-              </p>
-              <div style={{ display: 'flex', gap: 5, marginBottom: 8, justifyContent: 'center', flexWrap: 'wrap' }}>
-                {[1,2,3,4,5,6,7,8,9,10].map(n => (
-                  <button key={n} onClick={() => setMs(n)} style={{
-                    width: 36, height: 36, borderRadius: 8, border: 'none', cursor: 'pointer',
-                    fontSize: '1rem', fontWeight: 700, fontFamily: 'inherit',
-                    background: ms === n ? config.scoreColors[n] : 'rgba(255,255,255,.07)',
-                    color: ms === n ? '#000' : 'rgba(236,232,224,.5)',
-                    transform: ms === n ? 'scale(1.12)' : 'scale(1)', transition: 'all .15s',
-                  }}>{n}</button>
-                ))}
-              </div>
-              {ms > 0 && <p style={{ textAlign: 'center', fontSize: '1rem', color: config.scoreColors[ms], marginBottom: 10, fontStyle: 'italic', fontFamily: "'Cormorant Garamond', Georgia, serif" }}>{config.scoreLabels[ms]}</p>}
-              <textarea value={msNote} onChange={e => setMsNote(e.target.value)} placeholder="Why this score?" rows={1}
-                style={{ width: '100%', background: 'rgba(13,13,18,.7)', border: `1px solid rgba(${config.colorRgb},.15)`, borderRadius: 12, padding: '12px 16px', color: '#ece8e0', fontSize: '1rem', fontFamily: 'inherit', resize: 'none', lineHeight: 1.5, outline: 'none', transition: 'border-color .2s ease' }}
-                onFocus={e => e.target.style.borderColor = `rgba(${config.colorRgb},.45)`}
-                onBlur={e => e.target.style.borderColor = `rgba(${config.colorRgb},.15)`}
-              />
-              {ms > 0 && (ms !== existingScore || msNote !== (entries[today]?.[noteKey] || "")) && (
-                <button onClick={saveMindset} style={{ marginTop: 8, background: `rgba(${config.colorRgb},.14)`, border: `1px solid rgba(${config.colorRgb},.35)`, color: config.color, padding: '6px 16px', borderRadius: 8, fontSize: '1rem', cursor: 'pointer', fontFamily: 'inherit' }}>Save</button>
-              )}
-              {tod === 'evening' && todayShift !== null && (
-                <div style={{ marginTop: 10, textAlign: 'center', fontSize: '.95rem', color: todayShift >= 0 ? '#4cc97a' : '#c96a4c', opacity: .8 }}>
-                  Shift: {entries[today]?.ms_am} → {entries[today]?.ms_pm} ({todayShift >= 0 ? '+' : ''}{todayShift})
-                </div>
-              )}
-            </div>
-          </>
-        )}
-
-        {/* Entries view */}
-        {view === 'entries' && (
-          <>
-            <div style={{ marginBottom: 20 }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 12 }}>
-                <h3 style={{ fontSize: '1rem', color: config.color, letterSpacing: '.08em', textTransform: 'uppercase', fontWeight: 600 }}>{entryDates.length} {entryDates.length === 1 ? 'day' : 'days'} logged</h3>
-                <span style={{ fontSize: '.9rem', color: `rgba(${config.colorRgb},.5)` }}>
-                  {(() => {
-                    const cal = getCalendarDays().filter(d => !d.isFuture);
-                    const months = [...new Set(cal.map(d => new Date(d.date + 'T12:00:00').toLocaleDateString('en', { month: 'short' })))];
-                    return months.join(' – ');
-                  })()}
-                </span>
-              </div>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 4, marginBottom: 8 }}>
-                {['Su','M','T','W','Th','F','Sa'].map(l => (
-                  <div key={l} style={{ textAlign: 'center', fontSize: '.85rem', color: `rgba(${config.colorRgb},.5)`, paddingBottom: 6, fontWeight: 600 }}>{l}</div>
-                ))}
-                {getCalendarDays().map((d, i) => (
-                  <div key={i} onClick={() => !d.isFuture && d.hasData && setSelectedDate(selectedDate === d.date ? null : d.date)} style={{
-                    aspectRatio: '1', borderRadius: 6, cursor: !d.isFuture && d.hasData ? 'pointer' : 'default',
-                    background: d.isFuture ? 'transparent' : selectedDate === d.date ? `rgba(${config.colorRgb},.6)` : d.score ? `rgba(${d.score >= 7 ? '76,200,122' : d.score >= 4 ? config.colorRgb : '201,76,76'},${.15 + (d.score / 10) * .4})` : d.hasData ? `rgba(${config.colorRgb},.12)` : 'rgba(255,255,255,.05)',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    fontSize: '.9rem',
-                    color: d.isFuture ? 'transparent' : selectedDate === d.date ? '#000' : (d.hasData || d.score) ? '#ece8e0' : 'rgba(236,232,224,.25)',
-                    fontWeight: d.isToday ? 700 : 400,
-                    border: d.isToday ? `2px solid rgba(${config.colorRgb},.7)` : '1px solid transparent',
-                  }}>{d.isFuture ? '' : d.num}</div>
-                ))}
-              </div>
-              <p style={{ fontSize: '.9rem', color: 'rgba(236,232,224,.35)', textAlign: 'center', marginBottom: 16 }}>Tap a day to view that entry</p>
-            </div>
-            {selectedDate
-              ? <DayEntry dk={selectedDate} />
-              : entryDates.length > 0
-                ? entryDates.map(dk => <DayEntry key={dk} dk={dk} />)
-                : <p style={{ fontSize: '1rem', color: 'rgba(236,232,224,.4)', textAlign: 'center', padding: 30 }}>No entries yet.</p>
-            }
-          </>
-        )}
-
-        {/* Trends view */}
-        {view === 'trends' && (
-          <>
-            <div style={{ marginTop: 8, marginBottom: 22 }}>
-              <h3 style={{ fontSize: '1rem', color: config.color, letterSpacing: '.08em', textTransform: 'uppercase', fontWeight: 600, marginBottom: 14 }}>{config.trendTitle}</h3>
-              {history.length >= 2 ? (
-                <div style={{ background: 'rgba(255,255,255,.04)', borderRadius: 12, padding: '16px 12px 8px', border: `1px solid rgba(${config.colorRgb},.1)` }}>
-                  <Sparkline data={history} />
-                  <div style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 8px 0', fontSize: '.9rem', color: 'rgba(236,232,224,.4)' }}>
-                    <span>{history[0].label}</span>
-                    <span>{history.at(-1).label}</span>
-                  </div>
-                </div>
-              ) : (
-                <p style={{ fontSize: '1rem', color: 'rgba(236,232,224,.4)', textAlign: 'center', padding: 20 }}>
-                  {history.length === 0 ? 'Log your first check-in to start tracking' : 'One more day to see your trend line'}
-                </p>
-              )}
-            </div>
-
-            <div style={{ display: 'flex', gap: 10, marginBottom: 22 }}>
-              {[
-                { n: avgScore, l: 'Avg Score' },
-                { n: trend ? (Number(trend) >= 0 ? `+${trend}` : trend) : '—', l: '7d Trend', c: trend ? (Number(trend) >= 0 ? '#4cc97a' : '#c94c4c') : null },
-                { n: streak.current, l: 'Streak' },
-                { n: streak.longest, l: 'Best' },
-              ].map((s, i) => (
-                <div key={i} style={{ flex: 1, textAlign: 'center', background: `rgba(${config.colorRgb},.05)`, borderRadius: 10, padding: '12px 4px' }}>
-                  <div style={{ fontSize: '1.5rem', color: s.c || config.color, fontWeight: 700 }}>{s.n}</div>
-                  <div style={{ fontSize: '.85rem', color: 'rgba(236,232,224,.45)', textTransform: 'uppercase', letterSpacing: '.05em', marginTop: 3 }}>{s.l}</div>
-                </div>
-              ))}
-            </div>
-
-            {(() => {
-              const shifts = Object.keys(entries).sort()
-                .filter(k => entries[k]?.ms_am && entries[k]?.ms_pm)
-                .map(k => ({ shift: entries[k].ms_pm - entries[k].ms_am, label: new Date(k + 'T12:00:00').toLocaleDateString('en', { month: 'short', day: 'numeric' }) }));
-              if (!shifts.length) return null;
-              const avg = (shifts.reduce((a, s) => a + s.shift, 0) / shifts.length).toFixed(1);
-              return (
-                <div style={{ marginBottom: 22, background: 'rgba(255,255,255,.04)', borderRadius: 12, padding: '16px', border: `1px solid rgba(${config.colorRgb},.1)` }}>
-                  <h3 style={{ fontSize: '1rem', color: config.color, letterSpacing: '.08em', textTransform: 'uppercase', fontWeight: 600, marginBottom: 10 }}>Daily Shift (AM → PM)</h3>
-                  <div style={{ display: 'flex', gap: 3, alignItems: 'center', height: 44 }}>
-                    {shifts.slice(-20).map((s, i) => (
-                      <div key={i} title={`${s.label}: ${s.shift >= 0 ? '+' : ''}${s.shift}`} style={{ flex: 1, borderRadius: 3, height: `${Math.max(4, Math.abs(s.shift) * 8)}px`, background: s.shift >= 0 ? 'rgba(76,200,122,.55)' : 'rgba(201,76,76,.55)' }} />
-                    ))}
-                  </div>
-                  <p style={{ fontSize: '.95rem', color: 'rgba(236,232,224,.5)', marginTop: 8, textAlign: 'center' }}>
-                    Avg shift: <span style={{ color: Number(avg) >= 0 ? '#4cc97a' : '#c96a4c' }}>{Number(avg) >= 0 ? '+' : ''}{avg}</span>
-                  </p>
                 </div>
               );
             })()}
+          </>
+        )}
 
-            <div>
-              <h3 style={{ fontSize: '1rem', color: config.color, letterSpacing: '.08em', textTransform: 'uppercase', fontWeight: 600, marginBottom: 12 }}>Check-In Log</h3>
-              {history.slice().reverse().slice(0, 10).map(h => (
-                <div key={h.date} onClick={() => { setSelectedDate(h.date); setView('entries'); }} style={{ display: 'flex', gap: 12, alignItems: 'flex-start', marginBottom: 8, padding: '10px 12px', background: 'rgba(255,255,255,.04)', borderRadius: 10, cursor: 'pointer' }}>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 3, alignItems: 'center', flexShrink: 0 }}>
-                    {h.am > 0 && <div style={{ width: 26, height: 26, borderRadius: 6, background: config.scoreColors[h.am], display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1rem', fontWeight: 700, color: '#000' }}>{h.am}</div>}
-                    {h.am > 0 && h.pm > 0 && <span style={{ fontSize: '.85rem', color: h.pm >= h.am ? '#4cc97a' : '#c96a4c' }}>→</span>}
-                    {h.pm > 0 && <div style={{ width: 26, height: 26, borderRadius: 6, background: config.scoreColors[h.pm], display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1rem', fontWeight: 700, color: '#000' }}>{h.pm}</div>}
-                  </div>
-                  <div style={{ flex: 1 }}>
-                    <div style={{ fontSize: '.95rem', color: 'rgba(236,232,224,.55)', marginBottom: 3 }}>{h.label}</div>
-                    {h.amNote && <p style={{ fontSize: '1rem', color: 'rgba(236,232,224,.7)', lineHeight: 1.4, margin: '0 0 2px' }}>☀ {h.amNote}</p>}
-                    {h.pmNote && <p style={{ fontSize: '1rem', color: 'rgba(236,232,224,.7)', lineHeight: 1.4, margin: 0 }}>☽ {h.pmNote}</p>}
-                  </div>
-                  <span style={{ fontSize: '1.1rem', color: `rgba(${config.colorRgb},.3)`, marginTop: 4 }}>›</span>
+        {/* Pages view */}
+        {view === 'entries' && (() => {
+          const currentDk = selectedDate || entryDates[carouselIndex];
+          const currentIdx = selectedDate ? entryDates.indexOf(selectedDate) : carouselIndex;
+          const navigate = (dk) => {
+            const idx = entryDates.indexOf(dk);
+            if (idx >= 0) { setCarouselIndex(idx); setSelectedDate(dk); }
+          };
+          return (
+            <>
+              {/* Calendar toggle */}
+              <div style={{ marginBottom: 16 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: showCalendar ? 12 : 0 }}>
+                  <p style={{ fontFamily: "'Cormorant Garamond', Georgia, serif", fontSize: '.95rem', fontStyle: 'italic', color: `rgba(${config.colorRgb},.4)`, margin: 0 }}>
+                    {entryDates.length === 0 ? "Your pages will gather here." : entryDates.length === 1 ? "One page written." : `${entryDates.length} pages in this journey.`}
+                  </p>
+                  <button onClick={() => setShowCalendar(v => !v)} title="Jump to date" style={{
+                    background: showCalendar ? `rgba(${config.colorRgb},.15)` : 'none',
+                    border: `1px solid rgba(${config.colorRgb},.2)`,
+                    borderRadius: 8, width: 34, height: 34, cursor: 'pointer',
+                    color: showCalendar ? config.color : `rgba(${config.colorRgb},.5)`,
+                    fontSize: '1rem', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    transition: 'all .2s', flexShrink: 0,
+                  }}>▦</button>
                 </div>
-              ))}
-              {!history.length && <p style={{ fontSize: '1rem', color: 'rgba(236,232,224,.35)', textAlign: 'center', padding: 16 }}>No entries yet</p>}
-            </div>
 
-            <div style={{ textAlign: 'center', marginTop: 32 }}>
-              <button onClick={async () => { if (confirm('Clear all data for this journal? Cannot be undone.')) { await deleteAllEntries(config.id); setEntries({}); setMs(0); setMsNote(""); } }}
+                {showCalendar && (
+                  <div style={{ animation: 'fadeUp .25s ease both' }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 4, marginBottom: 4 }}>
+                      {['Su','M','T','W','Th','F','Sa'].map(l => (
+                        <div key={l} style={{ textAlign: 'center', fontSize: '.78rem', color: `rgba(${config.colorRgb},.4)`, paddingBottom: 6, fontWeight: 600, letterSpacing: '.06em' }}>{l}</div>
+                      ))}
+                      {getCalendarDays().map((d, i) => {
+                        const isActive = d.date === currentDk;
+                        return (
+                          <div key={i} onClick={() => { if (!d.isFuture && d.hasData) { navigate(d.date); setShowCalendar(false); } }} style={{
+                            aspectRatio: '1', borderRadius: 6,
+                            cursor: !d.isFuture && d.hasData ? 'pointer' : 'default',
+                            background: d.isFuture ? 'transparent'
+                              : isActive ? config.color
+                              : d.score ? `rgba(${d.score >= 7 ? '76,200,122' : d.score >= 4 ? config.colorRgb : '201,76,76'},${.12 + (d.score / 10) * .35})`
+                              : d.hasData ? `rgba(${config.colorRgb},.12)`
+                              : 'rgba(255,255,255,.04)',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            fontSize: '.85rem',
+                            color: d.isFuture ? 'transparent' : isActive ? '#000' : (d.hasData || d.score) ? '#ece8e0' : 'rgba(236,232,224,.2)',
+                            fontWeight: d.isToday ? 700 : 400,
+                            border: d.isToday && !isActive ? `1px solid rgba(${config.colorRgb},.5)` : '1px solid transparent',
+                            transition: 'background .15s',
+                          }}>{d.isFuture ? '' : d.num}</div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Entry carousel */}
+              {entryDates.length === 0 ? (
+                <p style={{ fontFamily: "'Cormorant Garamond', Georgia, serif", fontStyle: 'italic', fontSize: '1.1rem', color: 'rgba(236,232,224,.3)', textAlign: 'center', padding: '40px 20px', lineHeight: 1.7 }}>
+                  Begin today, and your first page will live here.
+                </p>
+              ) : (
+                <>
+                  {/* Carousel navigation */}
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                    <button
+                      onClick={() => { const next = Math.min(entryDates.length - 1, currentIdx + 1); setCarouselIndex(next); setSelectedDate(entryDates[next]); }}
+                      disabled={currentIdx >= entryDates.length - 1}
+                      style={{ background: 'none', border: `1px solid rgba(${config.colorRgb},.2)`, color: currentIdx >= entryDates.length - 1 ? `rgba(${config.colorRgb},.15)` : config.color, padding: '7px 16px', borderRadius: 10, fontSize: '1rem', cursor: currentIdx >= entryDates.length - 1 ? 'default' : 'pointer', fontFamily: 'inherit' }}
+                    >‹ Earlier</button>
+                    <span style={{ fontFamily: "'Cormorant Garamond', Georgia, serif", fontSize: '.9rem', color: `rgba(${config.colorRgb},.4)`, fontStyle: 'italic' }}>
+                      {currentIdx + 1} of {entryDates.length}
+                    </span>
+                    <button
+                      onClick={() => { const prev = Math.max(0, currentIdx - 1); setCarouselIndex(prev); setSelectedDate(entryDates[prev]); }}
+                      disabled={currentIdx <= 0}
+                      style={{ background: 'none', border: `1px solid rgba(${config.colorRgb},.2)`, color: currentIdx <= 0 ? `rgba(${config.colorRgb},.15)` : config.color, padding: '7px 16px', borderRadius: 10, fontSize: '1rem', cursor: currentIdx <= 0 ? 'default' : 'pointer', fontFamily: 'inherit' }}
+                    >Later ›</button>
+                  </div>
+
+                  {currentDk && <DayEntry dk={currentDk} key={currentDk} />}
+                </>
+              )}
+            </>
+          );
+        })()}
+
+        {/* Weekly Letter view */}
+        {view === 'trends' && (
+          <div style={{ marginTop: 8 }}>
+            {/* Context */}
+            <p style={{ fontSize: '.78rem', letterSpacing: '.14em', textTransform: 'uppercase', color: `rgba(${config.colorRgb},.4)`, marginBottom: 4 }}>
+              Week {weekNumber + 1} of your journey
+            </p>
+            <p style={{ fontFamily: "'Cormorant Garamond', Georgia, serif", fontSize: '.95rem', fontStyle: 'italic', color: `rgba(${config.colorRgb},.5)`, marginBottom: 32 }}>
+              Chapter {getChapterNumber(journeyDay)}: {JOURNAL_CHAPTERS[config.id][getChapterNumber(journeyDay)].name} · Day {journeyDay}
+            </p>
+
+            {/* Loading */}
+            {reflectionLoading && (
+              <p style={{ fontFamily: "'Cormorant Garamond', Georgia, serif", fontStyle: 'italic', color: `rgba(${config.colorRgb},.45)`, fontSize: '1.1rem', textAlign: 'center', padding: 40 }}>
+                Reading your week…
+              </p>
+            )}
+
+            {/* No entries yet this week */}
+            {!reflectionLoading && !weeklyReflection && !reflectionError && (
+              <p style={{ fontFamily: "'Cormorant Garamond', Georgia, serif", fontStyle: 'italic', color: 'rgba(236,232,224,.35)', fontSize: '1.1rem', textAlign: 'center', padding: '40px 20px', lineHeight: 1.7 }}>
+                Your weekly letter will appear after your first check-in this week.
+              </p>
+            )}
+
+            {/* Error */}
+            {reflectionError && (
+              <div style={{ textAlign: 'center', padding: 40 }}>
+                <p style={{ color: 'rgba(236,232,224,.35)', marginBottom: 16, fontFamily: "'Cormorant Garamond', Georgia, serif", fontStyle: 'italic' }}>
+                  Couldn't reach the letter writer just now.
+                </p>
+                <button onClick={() => { letterLoadedRef.current = false; loadWeeklyLetter(); }} style={{
+                  background: 'none', border: `1px solid rgba(${config.colorRgb},.25)`,
+                  color: config.color, padding: '8px 20px', borderRadius: 10,
+                  fontSize: '1rem', cursor: 'pointer', fontFamily: 'inherit',
+                }}>Try again</button>
+              </div>
+            )}
+
+            {/* The letter */}
+            {weeklyReflection && (
+              <>
+                {/* Attendance — poetic, never a raw number */}
+                <div style={{ marginBottom: 24, padding: '0 4px' }}>
+                  <p style={{ fontFamily: "'Cormorant Garamond', Georgia, serif", fontSize: '1.05rem', color: `rgba(${config.colorRgb},.55)`, fontStyle: 'italic', margin: 0, lineHeight: 1.7 }}>
+                    {weeklyReflection.entries_count === 7
+                      ? "You showed up every day this week."
+                      : weeklyReflection.entries_count === 6
+                      ? "Six of seven days, you came back."
+                      : weeklyReflection.entries_count >= 4
+                      ? `${weeklyReflection.entries_count === 5 ? 'Five' : 'Four'} days this week, you came back to yourself.`
+                      : weeklyReflection.entries_count === 3
+                      ? "Three days this week, you chose to return."
+                      : weeklyReflection.entries_count === 2
+                      ? "Twice this week, you found your way back."
+                      : weeklyReflection.entries_count === 1
+                      ? "Once this week, you chose to return. That counts."
+                      : "A quiet week. The practice remains."}
+                  </p>
+                </div>
+
+                {/* Letter card */}
+                <div style={{
+                  background: `radial-gradient(ellipse at 50% 0%, rgba(${config.colorRgb},.07) 0%, rgba(13,13,18,0) 70%)`,
+                  border: `1px solid rgba(${config.colorRgb},.15)`,
+                  borderRadius: 20, padding: '32px 28px',
+                  animation: 'fadeUp .5s ease both', marginBottom: 20,
+                }}>
+                  <p style={{ fontFamily: "'Cormorant Garamond', Georgia, serif", fontSize: '1.35rem', fontStyle: 'italic', color: '#ece8e0', lineHeight: 1.75, margin: 0 }}>
+                    {weeklyReflection.reflection_text}
+                  </p>
+                </div>
+
+                {/* This week's reflection prompt */}
+                {thisWeekly && (
+                  <div style={{ marginBottom: 32, padding: '16px 20px', background: 'rgba(255,255,255,.03)', borderRadius: 12, border: `1px solid rgba(${config.colorRgb},.08)` }}>
+                    <p style={{ fontSize: '.78rem', letterSpacing: '.12em', textTransform: 'uppercase', color: `rgba(${config.colorRgb},.4)`, margin: '0 0 8px' }}>This week's reflection</p>
+                    <p style={{ fontFamily: "'Cormorant Garamond', Georgia, serif", fontSize: '1rem', color: 'rgba(236,232,224,.55)', lineHeight: 1.6, margin: 0, fontStyle: 'italic' }}>
+                      {thisWeekly}
+                    </p>
+                  </div>
+                )}
+              </>
+            )}
+
+            <div style={{ textAlign: 'center', marginTop: weeklyReflection ? 8 : 40 }}>
+              <button onClick={async () => { if (confirm('Clear all data for this journal? Cannot be undone.')) { await deleteAllEntries(config.id); setEntries({}); setMs(0); setMsNote(""); setWeeklyReflection(null); letterLoadedRef.current = false; } }}
                 style={{ background: 'none', border: '1px solid rgba(201,76,76,.2)', color: 'rgba(201,76,76,.4)', padding: '6px 16px', borderRadius: 8, fontSize: '1rem', cursor: 'pointer', fontFamily: 'inherit' }}>
                 Reset Journal Data
               </button>
             </div>
-          </>
+          </div>
         )}
       </div>
     </div>

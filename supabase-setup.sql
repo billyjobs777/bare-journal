@@ -87,3 +87,31 @@ create policy "Users can insert own intentions"
 create policy "Users can update own intentions"
   on journal_intentions for update
   using (auth.uid() = user_id);
+
+-- ============================================================
+-- MIGRATION: Add weekly_reflections table for AI-generated weekly letters
+-- ============================================================
+create table if not exists weekly_reflections (
+  id uuid default gen_random_uuid() primary key,
+  user_id uuid references auth.users(id) on delete cascade not null,
+  journal_type text not null,
+  week_number integer not null,
+  reflection_text text not null,
+  entries_count integer not null default 0,
+  generated_at timestamptz default now(),
+  unique(user_id, journal_type, week_number)
+);
+
+alter table weekly_reflections enable row level security;
+
+create policy "Users can read own reflections"
+  on weekly_reflections for select
+  using (auth.uid() = user_id);
+
+create policy "Users can insert own reflections"
+  on weekly_reflections for insert
+  with check (auth.uid() = user_id);
+
+create policy "Users can update own reflections"
+  on weekly_reflections for update
+  using (auth.uid() = user_id);

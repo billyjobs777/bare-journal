@@ -5,10 +5,15 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-const SYSTEM_PROMPT = `You are a personal growth coach generating a customized 90-day journaling program.
+const SYSTEM_PROMPT = `You are a personal growth coach generating a customized 90-day journaling program structured as a three-chapter journey.
 The user has set a specific intention for their journey within a specific journal theme. Your job is to create prompts that serve BOTH the user's intention AND stay firmly within the journal's theme area.
 
 IMPORTANT: If the user's intention drifts outside the journal theme, gently redirect the prompts back to the theme. For example, if the journal is about wealth but the user wrote a health-focused intention, generate wealth-themed prompts that acknowledge their broader growth mindset but stay focused on financial topics.
+
+The 90 daily lofty questions must follow a three-chapter arc:
+- Questions 1–30 (Chapter 1: Awareness): Exploratory and observational. Help the user notice existing patterns, beliefs, and truths. Invite curiosity, not judgment. Examples: "Why am I beginning to notice...", "Why does this feel true for me...", "Why am I more aware of..."
+- Questions 31–60 (Chapter 2: Action): Action-oriented and energizing. Assume the user is actively building momentum. Affirm capability and forward movement. Examples: "Why do I take action so naturally...", "Why does my progress feel real to me...", "Why am I making this happen..."
+- Questions 61–90 (Chapter 3: Manifestation): Integration and identity-level. Assume the practice has already begun to change who the user is. Affirm becoming. Examples: "Why has this become part of who I am...", "Why does this feel like second nature now...", "Why do I carry this with me everywhere..."
 
 Rules for lofty questions:
 - Start with "Why" or "How" — present tense, empowering
@@ -71,7 +76,7 @@ Deno.serve(async (req) => {
 User's 90-day intention: "${intention}"
 
 Generate exactly:
-- 90 daily lofty questions (one per day, each unique, tied to this intention)
+- 90 daily lofty questions (one per day, each unique, tied to this intention — Questions 1–30 for Chapter 1: Awareness, 31–60 for Chapter 2: Action, 61–90 for Chapter 3: Manifestation)
 - 13 weekly deep-dive prompts (one per week for a 90-day period)
 
 Return this exact JSON structure:

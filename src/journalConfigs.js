@@ -1,3 +1,187 @@
+// Journal-specific chapter text — each journal has its own arc language
+export const JOURNAL_CHAPTERS = {
+  wealth: {
+    1: {
+      name: "Awareness", days: "Days 1–30",
+      opening: "Welcome. You've chosen to begin something rare — a daily practice with money that goes deeper than numbers. For the next thirty days, this journal is your private space to be completely honest about what wealth means to you, where it feels close, and where it feels impossibly far away.",
+      expectation: "There's nothing to fix yet. Nothing to prove. You're simply here to look — to let old beliefs rise to the surface and be named. Some of what comes up will feel heavy. Some will surprise you with its quiet beauty. Let all of it be here. This is where the real work begins, and it begins with you, exactly as you are.",
+      goals: [
+        "Let the stories you carry about money finally be heard",
+        "Create a morning and evening ritual that belongs only to you",
+        "Begin to see where inherited beliefs end and your truth begins",
+      ],
+    },
+    2: {
+      name: "Action", days: "Days 31–60",
+      opening: "You've spent thirty days looking honestly at yourself, and that is not a small thing. Now you're being invited into the next room — where the seeing becomes doing. This is where the ritual deepens. Where you bring your intentions into contact with the actual world.",
+      expectation: "This chapter will ask more of you. There will be days when the momentum feels real and days when it disappears entirely. Both are part of the same practice. The ritual is not about feeling ready — it's about returning to this space regardless. You've already shown you can do that. Now let it compound.",
+      goals: [
+        "Bring one deliberate act of wealth-building into each week",
+        "Close the distance between what you believe and how you live",
+        "Let yourself become someone whose actions match their intentions",
+      ],
+    },
+    3: {
+      name: "Manifestation", days: "Days 61–90",
+      opening: "Sixty days. You have kept returning to this ritual when nothing required it of you except your own commitment. Something has been building quietly inside that — a new way of carrying yourself around money, a new voice when you think about what's possible. You may not have named it yet. This final chapter is where you do.",
+      expectation: "These last thirty days aren't about doing more. They're about receiving what the practice has already given you — and anchoring it so deeply into who you are that it travels with you beyond Day 90. The ritual doesn't end here. It graduates into your life.",
+      goals: [
+        "Receive the shift that's already happened — let yourself see it",
+        "Anchor your new financial identity as something permanent",
+        "Carry this practice forward as a way of living, not a program",
+      ],
+    },
+  },
+
+  motivational: {
+    1: {
+      name: "Awareness", days: "Days 1–30",
+      opening: "You're here. That already says something about you. This journal is an invitation to step into a daily ritual — a quiet, private practice where you get to be completely honest about what drives you, what holds you back, and who you're becoming when no one is watching.",
+      expectation: "For the next thirty days, nothing is required of you except presence. You don't need to be inspired. You don't need to feel ready. Some days in this chapter will crackle with energy. Others will feel flat and ordinary. Both are exactly right. This ritual isn't built on peak moments — it's built on showing up, again and again, in the ordinary ones.",
+      goals: [
+        "Give voice to what truly fuels you — and what quietly drains you",
+        "Let this daily ritual become your anchor, not your performance",
+        "Begin hearing your own story more honestly and more generously",
+      ],
+    },
+    2: {
+      name: "Action", days: "Days 31–60",
+      opening: "For a full month, you've been building the foundation — watching yourself, naming things, showing up in the quiet. Now the ritual shifts. You're being invited into something more demanding and more rewarding: the place where intention becomes movement, where the person you've been seeing starts to actually appear in the world.",
+      expectation: "There will come a moment in this chapter — around Week 5 — where the practice feels harder for no clear reason. That is not a sign to stop. That is the exact threshold you came here to cross. The ritual holds you here. Trust it. You've already proven you can return to it when the day is easy. Now you'll discover you can return when it isn't.",
+      goals: [
+        "Let growth be the choice you make before comfort gets a vote",
+        "Build a consistency so steady it no longer needs motivation to run",
+        "Watch yourself become — through action, not intention alone",
+      ],
+    },
+    3: {
+      name: "Manifestation", days: "Days 61–90",
+      opening: "You have been practicing for sixty days. Not perfectly — no one does this perfectly — but faithfully. And something faithful over sixty days leaves a mark that can't be undone. You are not the same person who opened this journal on Day 1. This final chapter is about meeting that person face to face.",
+      expectation: "What happens in these last thirty days is less about new effort and more about recognition. The transformation isn't waiting to happen — it has been happening, quietly, in every single return to this page. Now you get to own it. To claim it. To let it be true without waiting for more proof.",
+      goals: [
+        "Meet the version of yourself that sixty days of practice has built",
+        "Claim the identity you've been growing into as simply who you are",
+        "Let this ritual become not something you do, but something you are",
+      ],
+    },
+  },
+
+  health: {
+    1: {
+      name: "Awareness", days: "Days 1–30",
+      opening: "Welcome to the beginning of something that most people never attempt: a daily ritual of honest attention to your body. Not to fix it. Not to push it. Just to listen — carefully, patiently, without judgment — to what it has been trying to tell you for longer than you might realize.",
+      expectation: "Your body holds more wisdom than any plan or program. This chapter asks you to slow down enough to hear it. Some of what you notice will be uncomfortable. Some will be tender. Some will feel like finally being understood. Whatever arises, it belongs here. This ritual has room for all of it — and so do you.",
+      goals: [
+        "Begin truly hearing how your body feels, not how you think it should",
+        "Create a morning and evening space where your body is welcomed",
+        "Discover what genuinely restores you versus what merely distracts",
+      ],
+    },
+    2: {
+      name: "Action", days: "Days 31–60",
+      opening: "You have spent a month learning to listen. Now the ritual deepens into something even more intimate: responding. This chapter is the practice of keeping promises to your body — small ones, consistent ones, made in the quiet of this space and honored in the hours beyond it.",
+      expectation: "There will be days when movement feels like a gift and days when it feels like friction. Both are the practice. This chapter asks you to show up especially on the friction days — not to push through, but to honor the commitment you've made to yourself. That is what transforms a journal into a ritual, and a ritual into a life.",
+      goals: [
+        "Move through the world with intention rather than just momentum",
+        "Keep the promises your body has asked you to keep",
+        "Build a practice that is yours — not borrowed from someone else's plan",
+      ],
+    },
+    3: {
+      name: "Manifestation", days: "Days 61–90",
+      opening: "Sixty days of returning to your body with honesty and care. What was once effort has become habit. What was once habit is becoming trust — a deep, earned trust between you and the body that carries you through everything. You are entering the final chapter of this ritual, and it is asking you to receive.",
+      expectation: "These last thirty days are not about doing more. They're about letting the changes you've already made land fully in your sense of who you are. The ritual has been working even when you couldn't feel it. This chapter is where you finally see that — and let yourself be changed by the seeing.",
+      goals: [
+        "Receive the trust your body is offering you — you've earned it",
+        "Recognize yourself as someone who honors the body, not fights it",
+        "Carry this sacred attention with you beyond the final page",
+      ],
+    },
+  },
+
+  gratitude: {
+    1: {
+      name: "Awareness", days: "Days 1–30",
+      opening: "You've stepped into a practice that is both ancient and quietly radical: the daily ritual of noticing what is good. Not performing positivity. Not pretending the hard things away. But choosing, day after day, to look for what is real and beautiful and already here — waiting, patiently, to be seen.",
+      expectation: "Some days the gratitude will arrive easily, like opening a window into warmth. Other days it will feel distant, even hollow. Both are the practice. The ritual isn't asking you to feel grateful — it's asking you to look. What you find when you look, even on the hard days, will begin to change you in ways you won't notice until they've already happened.",
+      goals: [
+        "Develop the quiet habit of looking for what is already good",
+        "Let appreciation become the orientation you return to each morning and evening",
+        "Begin to see the distance between what you have and what you've been noticing",
+      ],
+    },
+    2: {
+      name: "Action", days: "Days 31–60",
+      opening: "For thirty days you have been learning to see. Now the ritual invites you into something that multiplies everything you've built: expression. Gratitude held inside is beautiful. Gratitude spoken, written, given — that is where it becomes something alive in the world and in your relationships.",
+      expectation: "This chapter will sometimes bring unexpected tenderness — the ache of realizing how much beauty has been passing by unacknowledged. Let that ache be welcome. It is not sadness. It is the feeling of a heart that is opening wider than it has in a long time. The ritual holds space for all of it.",
+      goals: [
+        "Let what you feel become what you say and what you give",
+        "Find the hidden gift inside even the difficult moments",
+        "Deepen the connections that your gratitude practice is quietly nourishing",
+      ],
+    },
+    3: {
+      name: "Manifestation", days: "Days 61–90",
+      opening: "Sixty days of choosing to look for what is good. Something has shifted in you — not dramatically, but in the way light shifts when the angle changes just slightly and suddenly everything looks different. The world you're moving through hasn't changed. But the way you inhabit it has. This final chapter is an invitation to fully arrive there.",
+      expectation: "These last thirty days ask something beautiful of you: to stop reaching for gratitude and to simply live from it. Not as a practice you remember to do, but as the natural orientation of who you are now. The ritual has been building this in you all along. You are ready to receive it.",
+      goals: [
+        "Live from abundance as your native ground, not a destination",
+        "Let gratitude move through your relationships like light through water",
+        "Carry this open heart beyond Day 90 — it belongs to you now",
+      ],
+    },
+  },
+
+  creativity: {
+    1: {
+      name: "Awareness", days: "Days 1–30",
+      opening: "Welcome to a ritual for the part of you that has always needed to make things. Not the polished, finished, presentable version of your creativity — the raw one. The one that's been waiting under the noise and the doubt and the waiting-until-you're-ready. This practice is for that part. It begins today, with exactly what you have.",
+      expectation: "You will feel resistance in this chapter. There will be days when the blank page feels like a wall and your creative voice feels like a stranger. That is not a sign that you don't belong here — it is the precise sign that you do. Every creative practice begins exactly here, in this uncomfortable and necessary place. The ritual is your way through.",
+      goals: [
+        "Show up to make something before you feel ready — especially then",
+        "Begin to hear your own creative voice beneath the critic's",
+        "Notice what sparks something alive in you and what quietly dims it",
+      ],
+    },
+    2: {
+      name: "Action", days: "Days 31–60",
+      opening: "Your creative voice is real. You've heard it — in the glimpses, in the unexpected moments, in the days when something flowed. Now the ritual asks you to stop waiting for those days and start creating the conditions for them. This chapter is about showing up with your hands, not just your intentions.",
+      expectation: "You will make things you don't love. You will show up on days when nothing comes. You will hit a wall around Week 5 that makes you question whether this was ever a good idea. That wall is the doorway. The ritual exists precisely to walk you through it — not around it. What's on the other side is a version of yourself you haven't met yet.",
+      goals: [
+        "Make something every day — imperfect, unfinished, real",
+        "Release it before it's ready and discover what that teaches you",
+        "Become someone who creates as a way of living, not a way of waiting",
+      ],
+    },
+    3: {
+      name: "Manifestation", days: "Days 61–90",
+      opening: "You have been returning to this ritual for sixty days — through the resistance, through the dry spells, through the moments when your creative voice was loud and the many more when it was quiet. Something that began as a practice has become a part of you. This final chapter is an invitation to recognize it as such, and to stop treating it like a project you might abandon.",
+      expectation: "These last thirty days ask something of you that may be harder than anything in the chapters before: to receive what you've built, to acknowledge that your voice is real, and to claim your creative identity without waiting for someone else's permission. The ritual has been preparing you for exactly this moment.",
+      goals: [
+        "Claim your creative voice as real, distinct, and fully yours",
+        "Let sixty days of making become the proof you've been looking for",
+        "Carry this practice forward as a permanent part of how you live",
+      ],
+    },
+  },
+};
+
+export function getChapterNumber(journeyDay) {
+  if (journeyDay <= 30) return 1;
+  if (journeyDay <= 60) return 2;
+  return 3;
+}
+
+export const STREAK_MILESTONES = [
+  { days: 3,  message: "Three days. The ritual is taking root." },
+  { days: 7,  message: "One week. Something is shifting." },
+  { days: 14, message: "Two weeks in. The practice is finding its rhythm." },
+  { days: 21, message: "Twenty-one days. Habits form in the quiet." },
+  { days: 30, message: "A full month. You've crossed a threshold." },
+  { days: 60, message: "Sixty days of showing up. This is who you are now." },
+  { days: 90, message: "Ninety days. The journey is complete — and just beginning." },
+];
+
 const SCORE_LABELS_WEALTH = ["", "Anxious", "Stressed", "Uneasy", "Uncertain", "Neutral", "Okay", "Hopeful", "Confident", "Abundant", "Unstoppable"];
 const SCORE_LABELS_MOTIV  = ["", "Defeated", "Drained", "Flat", "Restless", "Neutral", "Stirring", "Driven", "Focused", "Fired Up", "Unstoppable"];
 const SCORE_COLORS = ["", "#c94c4c", "#c96a4c", "#c9884c", "#c9a44c", "#a8a868", "#7ab86e", "#5cb87a", "#4cb89a", "#4caac9", "#f0c040"];
