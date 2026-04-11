@@ -331,6 +331,9 @@ export default function Journal({ onLogout, onBack, config, user, displayName, o
             padding: '32px 28px', animation: 'fadeUp .6s ease both', overflowY: 'auto',
           }}>
             <div style={{ maxWidth: 480, width: '100%' }}>
+              <button onClick={onBack} style={{ background: 'none', border: 'none', color: 'rgba(236,232,224,.3)', fontSize: '1rem', cursor: 'pointer', padding: '0 0 24px', fontFamily: "'Cormorant Garamond', Georgia, serif", display: 'flex', alignItems: 'center', gap: 4 }}>
+                ‹ All journals
+              </button>
               <p style={{ fontSize: '.78rem', letterSpacing: '.16em', textTransform: 'uppercase', color: `rgba(${config.colorRgb},.5)`, marginBottom: 14, fontFamily: "'Cormorant Garamond', Georgia, serif" }}>
                 Chapter {chNum} of 3
               </p>
