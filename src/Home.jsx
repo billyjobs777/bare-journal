@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { JOURNALS } from './journalConfigs'
 import { loadAllEntriesForJournals, calcStreakFromEntries } from './db'
 import ProfileMenu from './ProfileMenu'
@@ -138,7 +138,7 @@ function JournalCard({ journal: j, streak, onSelect }) {
         width: 220,
         minHeight: 300,
         flexShrink: 0,
-        background: `radial-gradient(ellipse at 60% 20%, rgba(${j.colorRgb},.18) 0%, rgba(13,13,18,1) 70%)`,
+        background: `radial-gradient(ellipse 160% 80% at 80% -15%, rgba(${j.colorRgb},.28) 0%, transparent 60%), #0d0d12`,
         border: `1px solid rgba(${j.colorRgb}, ${hovered && !j.comingSoon ? '.42' : '.22'})`,
         borderRadius: 20,
         padding: '28px 24px',
@@ -265,20 +265,25 @@ export default function Home({ onSelect, onLogout, user, displayName, onNameUpda
       </div>
 
       {/* Greeting */}
-      <div style={{ padding: '64px 28px 36px', maxWidth: 640, margin: '0 auto' }}>
+      <div style={{
+        padding: windowWidth >= 1200 ? '80px 48px 44px' : windowWidth >= 768 ? '72px 36px 40px' : '64px 28px 36px',
+        maxWidth: windowWidth >= 1200 ? 860 : windowWidth >= 768 ? 700 : 560,
+        margin: '0 auto',
+      }}>
         <p style={{
-          fontFamily: SERIF, fontSize: windowWidth >= 1200 ? '1rem' : windowWidth >= 768 ? '.92rem' : '.85rem',
+          fontFamily: SERIF,
+          fontSize: windowWidth >= 1200 ? '1.05rem' : windowWidth >= 768 ? '.95rem' : '.85rem',
           letterSpacing: '.14em',
-          textTransform: 'uppercase', color: 'rgba(236,232,224,.4)', margin: '0 0 10px',
+          textTransform: 'uppercase', color: 'rgba(236,232,224,.4)', margin: '0 0 12px',
         }}>
           {greeting.salutation}
         </p>
         <h1 style={{
           fontFamily: SERIF,
-          fontSize: windowWidth >= 1200 ? '2.9rem' : windowWidth >= 768 ? '2.5rem' : '2.1rem',
+          fontSize: windowWidth >= 1200 ? '3.6rem' : windowWidth >= 768 ? '3rem' : '2.1rem',
           fontWeight: 600,
-          color: '#ece8e0', margin: 0, lineHeight: 1.25,
-          maxWidth: windowWidth >= 1200 ? 520 : windowWidth >= 768 ? 440 : 360,
+          color: '#ece8e0', margin: 0, lineHeight: 1.2,
+          maxWidth: windowWidth >= 1200 ? 680 : windowWidth >= 768 ? 520 : 360,
           animation: 'fadeUp .6s ease both',
         }}>
           {greeting.poetic}
@@ -312,7 +317,7 @@ export default function Home({ onSelect, onLogout, user, displayName, onNameUpda
                   width: sz.cardW,
                   minHeight: sz.cardH,
                   flexShrink: 0,
-                  background: `radial-gradient(ellipse at 60% 20%, rgba(${j.colorRgb},.18) 0%, rgba(13,13,18,1) 70%)`,
+                  background: `radial-gradient(ellipse 160% 80% at 80% -15%, rgba(${j.colorRgb},.28) 0%, transparent 60%), #0d0d12`,
                   border: `1px solid rgba(${j.colorRgb}, ${isActive ? '.35' : '.14'})`,
                   borderRadius: 20,
                   padding: sz.padding,

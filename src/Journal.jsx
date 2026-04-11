@@ -362,9 +362,9 @@ export default function Journal({ onLogout, onBack, config, user, displayName, o
               </ul>
               <button onClick={dismiss} style={{
                 width: '100%', background: config.color, border: 'none', borderRadius: 14,
-                padding: '16px 0', fontSize: '1rem', fontWeight: 700, color: '#000',
+                padding: '16px 0', fontSize: '1.1rem', fontWeight: 700, color: '#000',
                 cursor: 'pointer', fontFamily: "'Cormorant Garamond', Georgia, serif",
-                letterSpacing: '.06em', fontSize: '1.1rem',
+                letterSpacing: '.06em',
               }}>
                 {chNum === 1 ? 'Enter the ritual' : chNum === 2 ? 'Step into the next room' : 'Complete the journey'}
               </button>
