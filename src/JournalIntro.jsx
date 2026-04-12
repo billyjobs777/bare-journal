@@ -167,43 +167,6 @@ export default function JournalIntro({ config, onStart, onBack }) {
           </ul>
         </div>
 
-        {/* 90 days + 3 chapters */}
-        <div style={{
-          display: 'grid', gridTemplateColumns: '1fr 1fr 1fr',
-          gap: 10, marginBottom: 44,
-        }}>
-          {[
-            { num: 'I', name: 'Awareness', days: 'Days 1–30' },
-            { num: 'II', name: 'Action', days: 'Days 31–60' },
-            { num: 'III', name: 'Manifestation', days: 'Days 61–90' },
-          ].map(ch => (
-            <div key={ch.num} style={{
-              background: 'rgba(236,232,224,.03)',
-              border: '1px solid rgba(236,232,224,.07)',
-              borderRadius: 12, padding: '12px 14px', textAlign: 'center',
-            }}>
-              <p style={{
-                fontFamily: SERIF, fontSize: '.78rem', letterSpacing: '.1em',
-                textTransform: 'uppercase', color: `rgba(${config.colorRgb},.45)`,
-                margin: '0 0 4px',
-              }}>
-                Chapter {ch.num}
-              </p>
-              <p style={{
-                fontFamily: SERIF, fontSize: '1rem', fontWeight: 600,
-                color: '#ece8e0', margin: '0 0 3px',
-              }}>
-                {ch.name}
-              </p>
-              <p style={{
-                fontSize: '.78rem', color: 'rgba(236,232,224,.3)', margin: 0,
-              }}>
-                {ch.days}
-              </p>
-            </div>
-          ))}
-        </div>
-
         {/* CTA */}
         <button
           onClick={onStart}
