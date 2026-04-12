@@ -87,7 +87,11 @@ export default function Journal({ onLogout, onBack, config, user, displayName, o
       loadIntention(config.id),
     ]);
     setEntries(data);
-    const resolvedIntention = intentionData || false;
+    // If a reset was performed, ignore any intention that predates the reset time
+    const resetAt = localStorage.getItem(`bj_reset_${user.id}_${config.id}`);
+    const intentionIsValid = intentionData &&
+      (!resetAt || new Date(intentionData.created_at) > new Date(resetAt));
+    const resolvedIntention = intentionIsValid ? intentionData : false;
     setIntention(resolvedIntention);
     const t = dateKey();
     const todTod = new Date().getHours() < 15 ? "morning" : "evening";
@@ -320,7 +324,11 @@ export default function Journal({ onLogout, onBack, config, user, displayName, o
       <IntentionSetup
         config={config}
         onBack={onBack}
-        onComplete={(data) => setIntention(data)}
+        onComplete={(data) => {
+          // New intention saved — clear any reset marker so future loads accept it
+          localStorage.removeItem(`bj_reset_${user.id}_${config.id}`);
+          setIntention(data);
+        }}
       />
     );
   }
@@ -925,8 +933,10 @@ export default function Journal({ onLogout, onBack, config, user, displayName, o
                     <button
                       onClick={async () => {
                         await deleteAllEntries(config.id);
-                        await deleteIntention(config.id);
-                        // Clear all localStorage keys for this journal
+                        await deleteIntention(config.id); // best-effort; may be blocked by RLS
+                        // Stamp a reset time — loadData uses this to ignore any pre-reset intention
+                        localStorage.setItem(`bj_reset_${user.id}_${config.id}`, new Date().toISOString());
+                        // Clear all other localStorage keys for this journal
                         [1, 2, 3].forEach(n => localStorage.removeItem(`bj_chapter_seen_${user.id}_${config.id}_${n}`));
                         [3, 7, 14, 21, 30, 60, 90].forEach(m => localStorage.removeItem(`bj_streak_seen_${user.id}_${config.id}_${m}`));
                         localStorage.removeItem(`bj_celebration_seen_${user.id}_${config.id}`);
